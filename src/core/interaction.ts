@@ -159,43 +159,57 @@ export function attachInteractivePress(
   };
 }
 
+function normalizeAngleDeg(deg: number): number {
+  const wrapped = ((((deg + 180) % 360) + 360) % 360) - 180;
+  return wrapped === -180 && deg > 0 ? 180 : wrapped;
+}
+
 /**
  * Listens to pointer parallax & device gyroscope tilt to smoothly rotate the virtual specular light angle
- * on Fluid Glass rims ("in some places they move when you tilt your device").
+ * on TrueGlass rims ("in some places they move when you tilt your device").
  */
 export function attachVirtualTiltLight(
   onAngleChange: (angleDeg: number) => void,
+  initialAngleDeg = -135,
 ): () => void {
   if (typeof window === "undefined") return () => {};
 
-  let manualOverride = false;
-  let currentAngle = -135;
+  let stopped = false;
+  let currentAngle = initialAngleDeg;
+  let lastEmitted = Number.NaN;
 
-  const angleSpring = createSpring(currentAngle, 120, 18, (deg) => {
+  const angleSpring = createSpring(currentAngle, 120, 20, (deg) => {
     currentAngle = deg;
-    if (!manualOverride) onAngleChange(deg);
+    if (stopped) return;
+    if (!Number.isNaN(lastEmitted) && Math.abs(deg - lastEmitted) < 0.2) return;
+    lastEmitted = deg;
+    onAngleChange(normalizeAngleDeg(deg));
   });
 
+  const steerTo = (rawDeg: number) => {
+    if (stopped) return;
+    const delta = ((((rawDeg - currentAngle) % 360) + 540) % 360) - 180;
+    if (Math.abs(delta) < 0.25) return;
+    angleSpring.set(currentAngle + delta);
+  };
+
   const onPointerMove = (ev: PointerEvent) => {
-    if (manualOverride) return;
     const nx = (ev.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
     const ny = (ev.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
-    const deg = (Math.atan2(ny, nx) * 180) / Math.PI - 180;
-    angleSpring.set(deg);
+    if (nx * nx + ny * ny < 0.0025) return;
+    steerTo((Math.atan2(ny, nx) * 180) / Math.PI);
   };
 
   const onDeviceOrientation = (ev: DeviceOrientationEvent) => {
-    if (manualOverride) return;
     if (ev.gamma === null || ev.beta === null) return;
-    const deg = (Math.atan2(ev.beta - 35, ev.gamma) * 180) / Math.PI - 135;
-    angleSpring.set(deg);
+    steerTo((Math.atan2(ev.beta - 35, ev.gamma) * 180) / Math.PI);
   };
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("deviceorientation", onDeviceOrientation, { passive: true });
 
   return () => {
-    manualOverride = true;
+    stopped = true;
     angleSpring.stop();
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("deviceorientation", onDeviceOrientation);

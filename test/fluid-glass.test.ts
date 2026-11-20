@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   advanceSpringState,
   analyzeBackdropPixels,
+  attachVirtualTiltLight,
   benchmarkOptics,
   computeBezelProfile,
   concentricRadius,
@@ -464,6 +465,100 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
       [tabBar, seg, magnifierLens, glassBtn, filledBtn, identityGlass, search, menu].forEach((c) => c.destroy());
       host.remove();
       setAccessibilityModes({ reduceTransparency: false });
+    }
+  });
+
+  it("materializes and dematerializes buttons optically via --lg-materialize and refraction bend instead of snapping opacity", () => {
+    const mockCtx = {
+      fillStyle: "#0000",
+      createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
+      putImageData: () => {},
+    } as unknown as CanvasRenderingContext2D;
+    const ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => mockCtx);
+    const dataUrlSpy = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockImplementation(() => "data:image/png;base64,AA==");
+
+    const stage = document.createElement("div");
+    const backdrop = document.createElement("div");
+    backdrop.setAttribute("data-fluid-backdrop", "");
+    const btn = createButton({ label: "Continue" });
+    btn.element.style.borderRadius = "20px";
+
+    const mockBox = (el: HTMLElement, width: number, height: number) => {
+      Object.defineProperty(el, "offsetWidth", { configurable: true, value: width });
+      Object.defineProperty(el, "offsetHeight", { configurable: true, value: height });
+      vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, width, height));
+    };
+
+    try {
+      mockBox(backdrop, 400, 120);
+      mockBox(btn.element, 110, 40);
+      stage.append(backdrop, btn.element);
+      document.body.appendChild(stage);
+
+      btn.refit();
+      expect(btn.element.style.opacity).toBe("");
+      expect(btn.element.hasAttribute("data-dematerialized")).toBe(false);
+      expect(backdrop.style.filter).toMatch(/^url\(["']?#fluid-glass-lens-\d+-\d+["']?\)$/);
+
+      // Dematerialize drives --lg-materialize -> 0 and clears backdrop bend without snapping button opacity
+      btn.dematerialize(true);
+      expect(btn.element.style.opacity).toBe("");
+      expect(btn.refraction.bendProgress()).toBe(0);
+      expect(btn.element.style.getPropertyValue("--lg-materialize")).toBe("0.0000");
+      expect(btn.element.hasAttribute("data-dematerialized")).toBe(true);
+      expect(backdrop.style.filter).toBe("");
+
+      // Materialize restores full bend and clears dematerialized markers
+      btn.materialize(true);
+      expect(btn.element.style.opacity).toBe("");
+      expect(btn.refraction.bendProgress()).toBe(1);
+      expect(btn.element.style.getPropertyValue("--lg-materialize")).toBe("");
+      expect(btn.element.hasAttribute("data-dematerialized")).toBe(false);
+      expect(backdrop.style.filter).toMatch(/^url\(["']?#fluid-glass-lens-\d+-\d+["']?\)$/);
+
+      // Identity material disables backdrop bending completely
+      btn.setMaterial("identity");
+      expect(backdrop.style.filter).toBe("");
+    } finally {
+      btn.destroy();
+      stage.remove();
+      ctxSpy.mockRestore();
+      dataUrlSpy.mockRestore();
+    }
+  });
+
+  it("unwraps virtual tilt light angles across the +-180deg seam and detaches listeners cleanly on stop", () => {
+    setAccessibilityModes({ reduceMotion: true });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 1000 });
+    const angles: number[] = [];
+    const stop = attachVirtualTiltLight((deg) => angles.push(deg), -175);
+
+    const move = (clientX: number, clientY: number) => {
+      const ev = new Event("pointermove");
+      Object.assign(ev, { clientX, clientY });
+      window.dispatchEvent(ev);
+    };
+
+    try {
+      // Slightly below left horizontal axis: atan2(+0.05, -1) ~= +177.1deg (shortest arc from -175deg is -7.9deg, not +352deg)
+      move(0, 525);
+      expect(angles.length).toBeGreaterThan(0);
+      const crossed = angles.at(-1)!;
+      expect(crossed).toBeGreaterThan(170);
+      expect(crossed).toBeLessThanOrEqual(180);
+
+      // Top-left corner maps cleanly to -135deg
+      move(0, 0);
+      expect(angles.at(-1)!).toBeCloseTo(-135, 1);
+
+      const countBeforeStop = angles.length;
+      stop();
+      move(1000, 1000);
+      expect(angles.length).toBe(countBeforeStop);
+    } finally {
+      stop();
+      setAccessibilityModes({ reduceMotion: false });
     }
   });
 });

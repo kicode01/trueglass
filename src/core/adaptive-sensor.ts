@@ -103,9 +103,9 @@ export function attachAdaptiveBackdropSensor(
 
     if (surfaceSize !== "large") {
       // Hysteresis around Y = 0.44 prevents flicker on mid-tone photos
-      if (lastTheme === "light" && sample.luminance < 0.40) {
+      if (lastTheme === "light" && sample.luminance < 0.38) {
         lastTheme = "dark";
-      } else if (lastTheme === "dark" && sample.luminance > 0.48) {
+      } else if (lastTheme === "dark" && sample.luminance > 0.50) {
         lastTheme = "light";
       }
       glassElement.setAttribute("data-theme", lastTheme);

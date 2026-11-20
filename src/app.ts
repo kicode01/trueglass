@@ -19,7 +19,6 @@ import {
   createSlider,
   createSwitch,
   createTabBar,
-  materializeAllGlass,
   refitAllGlass,
   type GlassMaterial,
 } from "./components";
@@ -526,7 +525,20 @@ function mountApp(): void {
   // Settings Sliders below Magnifier
   const settingsWrap = document.createElement("div");
   settingsWrap.className = "settings";
-  let autoTilt = false;
+  let stopVirtualTilt: (() => void) | null = null;
+  let currentLightAngle = -135;
+  let rimRaf = 0;
+
+  const setDynamicLightAngle = (deg: number, active: boolean) => {
+    currentLightAngle = deg;
+    if (active) {
+      document.documentElement.setAttribute("data-dynamic-light", "");
+      document.documentElement.style.setProperty("--lg-light-angle", deg.toFixed(1));
+    } else {
+      document.documentElement.removeAttribute("data-dynamic-light");
+      document.documentElement.style.removeProperty("--lg-light-angle");
+    }
+  };
 
   const addOpticalSlider = (
     label: string,
@@ -573,20 +585,27 @@ function mountApp(): void {
   });
   addOpticalSlider("Rim", 0, 1, 0.01, 0.13, "", (v) => {
     lensGlass.element.style.setProperty("--lg-rim-shine", String(v));
-    lensGlass.refit();
+    if (document.documentElement.hasAttribute("data-dynamic-light")) return;
+    if (!rimRaf) {
+      rimRaf = requestAnimationFrame(() => {
+        rimRaf = 0;
+        lensGlass.refraction.repaintRim();
+      });
+    }
   });
   addOpticalSlider("Clear ↔ Tinted", 0, 1, 0.01, 0, "", (v) => {
     document.documentElement.style.setProperty("--lg-tint-amount", String(v));
     lensGlass.element.style.backgroundColor = v > 0 ? `rgb(255 255 255 / ${(v * 0.28).toFixed(2)})` : "";
-    refitAllGlass();
   });
 
-  const tiltCtrl = addOpticalSlider("Light Tilt", -180, 180, 5, -135, "°", (v) => {
-    autoTilt = false;
-    tiltModeSwitch.setChecked(false);
-    tiltModeState.textContent = "Off";
-    document.documentElement.style.setProperty("--lg-light-angle", String(v));
-    refitAllGlass();
+  const tiltCtrl = addOpticalSlider("Light Tilt", -180, 180, 1, -135, "°", (v) => {
+    if (stopVirtualTilt) {
+      stopVirtualTilt();
+      stopVirtualTilt = null;
+      tiltModeSwitch.setChecked(false);
+      tiltModeState.textContent = "Off";
+    }
+    setDynamicLightAngle(v, Math.abs(v + 135) > 0.01);
   });
 
   const tiltModeRow = document.createElement("div");
@@ -599,34 +618,32 @@ function mountApp(): void {
     ariaLabel: "Pointer Tilt Light",
     checked: false,
     onChange(on) {
-      autoTilt = on;
       tiltModeState.textContent = on ? "On" : "Off";
-      if (!on) {
-        document.documentElement.style.removeProperty("--lg-light-angle");
+      if (on) {
+        if (!stopVirtualTilt) {
+          let lastShown = Math.round(currentLightAngle);
+          setDynamicLightAngle(currentLightAngle, true);
+          stopVirtualTilt = attachVirtualTiltLight((deg) => {
+            setDynamicLightAngle(deg, true);
+            const rounded = Math.round(deg);
+            if (rounded !== lastShown) {
+              lastShown = rounded;
+              tiltCtrl.sl.setValue(rounded);
+              tiltCtrl.valEl.textContent = `${rounded}°`;
+            }
+          }, currentLightAngle);
+        }
+      } else {
+        stopVirtualTilt?.();
+        stopVirtualTilt = null;
+        setDynamicLightAngle(-135, false);
         tiltCtrl.sl.setValue(-135);
         tiltCtrl.valEl.textContent = "-135°";
-        refitAllGlass();
       }
     },
   });
   tiltModeRow.append(tiltModeLabel, tiltModeSwitch.element, tiltModeState);
   settingsWrap.appendChild(tiltModeRow);
-
-  let tiltRefitQueued = false;
-  attachVirtualTiltLight((deg) => {
-    if (!autoTilt) return;
-    const rounded = Math.round(deg);
-    document.documentElement.style.setProperty("--lg-light-angle", String(rounded));
-    tiltCtrl.sl.setValue(rounded);
-    tiltCtrl.valEl.textContent = `${rounded}°`;
-    if (!tiltRefitQueued) {
-      tiltRefitQueued = true;
-      requestAnimationFrame(() => {
-        tiltRefitQueued = false;
-        refitAllGlass();
-      });
-    }
-  });
 
   main.appendChild(section("Glass Magnifier & Optical Controls", magnifierBox, settingsWrap));
 
@@ -716,8 +733,19 @@ function mountApp(): void {
   );
 
   // 4. Button Section (with Material Variants + Materialize by Bending)
+  const btnStage = document.createElement("div");
+  btnStage.className = "btn-stage";
+  btnStage.setAttribute("data-theme", "dark");
+
+  const btnBackdrop = document.createElement("img");
+  btnBackdrop.className = "btn-stage-backdrop";
+  btnBackdrop.src = "/img/fluid-dark.webp";
+  btnBackdrop.alt = "";
+  btnBackdrop.draggable = false;
+  btnBackdrop.setAttribute("data-fluid-backdrop", "");
+
   const btnDemo = document.createElement("div");
-  btnDemo.className = "demo row";
+  btnDemo.className = "demo row btn-stage-row";
   let currentBtnVariant: "glass" | "filled" = "glass";
   let currentBtnTint: string | undefined;
   let currentBtnDestructive = false;
@@ -728,18 +756,14 @@ function mountApp(): void {
   const textBtnSlot = document.createElement("span");
   let btnIconHandle = createButton({ iconHtml: iconSvg(ICON_PATHS.share), iconOnly: true, ariaLabel: "Share" });
   let btnTextHandle = createButton({ label: "Continue" });
-  const matTrigger = createButton({
-    label: "Materialize",
-    variant: "glass",
-    onClick: () => {
-      btnIconHandle.materialize(false);
-      btnTextHandle.materialize(false);
-      materializeAllGlass();
-    },
-  });
   iconBtnSlot.appendChild(btnIconHandle.element);
   textBtnSlot.appendChild(btnTextHandle.element);
-  btnDemo.append(iconBtnSlot, textBtnSlot, matTrigger.element);
+  btnDemo.append(iconBtnSlot, textBtnSlot);
+  btnStage.append(btnBackdrop, btnDemo);
+  btnBackdrop.addEventListener("load", () => {
+    btnIconHandle.refit();
+    btnTextHandle.refit();
+  });
 
   const btnCode = codeBlock(`<Button icon={<ShareIcon />} aria-label="Share" />\n<Button>Continue</Button>`);
   const updateButtonCode = (iconName: string, label: string) => {
@@ -780,6 +804,10 @@ function mountApp(): void {
     });
     iconBtnSlot.appendChild(btnIconHandle.element);
     textBtnSlot.appendChild(btnTextHandle.element);
+    requestAnimationFrame(() => {
+      btnIconHandle.refit();
+      btnTextHandle.refit();
+    });
     updateButtonCode(lastIconName, lastLabel);
   };
 
@@ -810,7 +838,7 @@ function mountApp(): void {
   main.appendChild(
     section(
       "Button",
-      btnDemo,
+      btnStage,
       optionPills(["Glass", "Filled", "Tinted", "Tinted filled", "Destructive", "Destructive filled"], "Glass", rebuildButtons),
       materialPills,
       btnCode.pre,
@@ -1001,13 +1029,12 @@ function mountApp(): void {
   const sunsetStage = document.createElement("div");
   sunsetStage.className = "sunset-stage";
   sunsetStage.setAttribute("data-theme", "light");
-  sunsetStage.setAttribute("data-scroll-edge", "soft");
+  sunsetStage.setAttribute("data-scroll-edge", "none");
   sunsetStage.setAttribute("data-surface-size", "small");
 
   const sunsetScroller = document.createElement("div");
   sunsetScroller.className = "sunset-scroller";
   const sunsetContent = document.createElement("div");
-  sunsetContent.setAttribute("data-fluid-backdrop", "");
   const sunsetCanvas = document.createElement("canvas");
   sunsetCanvas.className = "sunset-canvas";
   sunsetContent.appendChild(sunsetCanvas);
@@ -1055,27 +1082,34 @@ function mountApp(): void {
   const adaptiveSensor = attachAdaptiveBackdropSensor(
     sunsetStage,
     () => {
-      const ratio = sunsetScroller.scrollTop / Math.max(1, sunsetCanvas.height - sunsetStage.clientHeight);
-      const sy = Math.round(Math.min(0.92, Math.max(0.05, ratio * 0.72 + 0.14)) * sunsetCanvas.height);
+      const canvasScale = sunsetCanvas.height / Math.max(1, sunsetCanvas.clientHeight || sunsetCanvas.height);
+      const hudCenterY = (sunsetScroller.scrollTop + Math.max(80, sunsetStage.clientHeight) - 46) * canvasScale;
+      const sy = Math.max(0, Math.min(sunsetCanvas.height - 24, Math.round(hudCenterY - 12)));
       const ctx = sunsetCanvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return null;
-      return analyzeBackdropPixels(ctx.getImageData(120, sy, 28, 12).data, 28, 12);
+      return analyzeBackdropPixels(ctx.getImageData(220, sy, 320, 24).data, 320, 24);
     },
     {
-      intervalMs: 90,
+      intervalMs: 120,
       surfaceSize: "small",
       onSample(s: BackdropSample) {
         telPill.element.textContent = `Y=${s.luminance.toFixed(2)} | σ=${s.contrastVariance.toFixed(2)} | Shadow=${s.adaptiveShadowAlpha.toFixed(2)} | ${s.recommendedTheme.toUpperCase()}`;
       },
     },
   );
+  let sunsetScrollRaf = 0;
   sunsetScroller.addEventListener(
     "scroll",
     () => {
-      const top = sunsetScroller.scrollTop;
-      sunsetHud.dataset.minimized = top > 48 ? "true" : "false";
-      jumpBtn.element.textContent = top > 650 ? "Scroll to Sunset" : "Scroll to Night";
-      adaptiveSensor.update();
+      if (sunsetScrollRaf) return;
+      sunsetScrollRaf = requestAnimationFrame(() => {
+        sunsetScrollRaf = 0;
+        const top = sunsetScroller.scrollTop;
+        sunsetHud.dataset.minimized = top > 48 ? "true" : "false";
+        const jumpLabel = jumpBtn.element.querySelector(".lg-button-label") ?? jumpBtn.element;
+        jumpLabel.textContent = top > 650 ? "Scroll to Sunset" : "Scroll to Night";
+        adaptiveSensor.update();
+      });
     },
     { passive: true },
   );
@@ -1118,7 +1152,11 @@ function mountApp(): void {
     section(
       "Adaptive Luminance Sensor, Snell Ray-Tracer & Kernel Benchmark",
       sunsetStage,
-      optionPills(["Sunset → Night", "Text ↔ Plain White", "Soft Scroll Edge", "Hard Scroll Edge"], "Sunset → Night", (m) => {
+      optionPills(["Sunset → Night", "Text ↔ Plain White", "No Scroll Edge", "Soft Scroll Edge", "Hard Scroll Edge"], "Sunset → Night", (m) => {
+        if (m === "No Scroll Edge") {
+          sunsetStage.setAttribute("data-scroll-edge", "none");
+          return;
+        }
         if (m === "Soft Scroll Edge") {
           sunsetStage.setAttribute("data-scroll-edge", "soft");
           return;

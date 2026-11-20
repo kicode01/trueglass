@@ -129,8 +129,9 @@ export function createButton(options: ButtonOptions): GlassHandle<HTMLButtonElem
     btn.insertAdjacentHTML("beforeend", options.iconHtml);
   }
   if (options.label && !options.iconOnly) {
-    const labelNode = document.createTextNode(options.label);
-    btn.appendChild(labelNode);
+    const labelEl = makeEl("span", "lg-button-label");
+    labelEl.textContent = options.label;
+    btn.appendChild(labelEl);
   }
   if (options.disabled) btn.disabled = true;
   if (options.onClick) btn.addEventListener("click", options.onClick);
@@ -141,25 +142,8 @@ export function createButton(options: ButtonOptions): GlassHandle<HTMLButtonElem
   return {
     element: btn,
     refraction,
-    materialize: (instant) => {
-      if (instant) {
-        btn.style.transition = "";
-        btn.style.opacity = "1";
-        refraction.materialize(true);
-        return;
-      }
-      btn.style.transition = "none";
-      btn.style.opacity = "0";
-      requestAnimationFrame(() => {
-        btn.style.transition = "opacity 160ms ease-out, background-color 200ms ease";
-        btn.style.opacity = "1";
-        refraction.materialize(false);
-      });
-    },
-    dematerialize: (instant) => {
-      btn.style.opacity = "0";
-      refraction.dematerialize(instant);
-    },
+    materialize: (instant) => refraction.materialize(instant),
+    dematerialize: (instant) => refraction.dematerialize(instant),
     setMaterial(material, dimmingScrim = false) {
       applyGlassMaterial(btn, material, dimmingScrim);
       refraction.refit();

@@ -735,6 +735,7 @@ function renderSurface(surface: Surface): void {
   if (across && down) {
     const unit = from.width / across || 1;
     for (const member of surface.members) {
+      if (!member.replaces && member.amount <= 0.002) continue;
       const at = member.glass.getBoundingClientRect();
       if (!member.fit || !at.width || !at.height) continue;
       const width = at.width / unit;
@@ -845,7 +846,7 @@ export function createLens(glass: HTMLElement, content: HTMLElement, options: Le
       renderSurface(shared);
     },
     update(amount) {
-      if (amount !== undefined) member.amount = clamp(amount, 0, 1);
+      if (amount !== undefined) member.amount = clamp(amount, 0, 1.5);
       if (active) renderSurface(shared);
     },
     refit() {
@@ -912,22 +913,35 @@ export function createBackdropLens(glass: HTMLElement, options: LensOptions): Ba
   };
 }
 
-const backdropFilters = new Map<string, string>();
+const backdropFilters = new Map<string, { name: string; el: SVGElement }>();
 
 export function fitBackdropLens(glass: HTMLElement, options: LensOptions, bendScale = 1): void {
+  const quantized = Math.round(clamp(bendScale, 0, 1.3) * 20) / 20;
+  if (quantized <= 0.005) {
+    glass.style.removeProperty("--lg-filter");
+    return;
+  }
   const fitted = fitLens(glass, options);
   if (!fitted) return;
   const { maps, key, shine, reach, dispersion, width, height } = fitted;
-  const scaledReach = reach * clamp(bendScale, 0, 1.5);
+  const scaledReach = reach * quantized;
   const id = `${key}|${scaledReach.toFixed(2)}|${dispersion}`;
-  let name = backdropFilters.get(id);
-  if (!name) {
+  let entry = backdropFilters.get(id);
+  if (!entry) {
+    if (backdropFilters.size >= 64) {
+      const oldestKey = backdropFilters.keys().next().value;
+      if (oldestKey !== undefined) {
+        backdropFilters.get(oldestKey)?.el.remove();
+        backdropFilters.delete(oldestKey);
+      }
+    }
     const built = buildFilterGraph([{ maps, shine }], false, false);
     placeLenses(built, [{ x: 0, y: 0, width, height, reach: scaledReach, dispersion, blur: 0 }], width, height, false);
-    name = `fluid-glass-backdrop-${backdropFilters.size}`;
+    const name = `fluid-glass-backdrop-${madeCount++}`;
     built.filter.id = name;
     svgContainer().append(built.filter);
-    backdropFilters.set(id, name);
+    entry = { name, el: built.filter };
+    backdropFilters.set(id, entry);
   }
-  glass.style.setProperty("--lg-filter", `url("#${name}") saturate(1.5)`);
+  glass.style.setProperty("--lg-filter", `url("#${entry.name}")`);
 }

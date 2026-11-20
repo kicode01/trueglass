@@ -488,7 +488,7 @@ function getScene(source: HTMLElement): Scene {
   source.addEventListener("load", mark, true);
   document.fonts?.addEventListener?.("loadingdone", mark);
   const theme = new MutationObserver(mark);
-  theme.observe(document.documentElement, { attributes: true });
+  theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
   const scheme = matchMedia("(prefers-color-scheme: dark)");
   scheme.addEventListener?.("change", mark);
   made.stop = () => {
@@ -667,6 +667,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
   layer.append(canvas);
 
   let active = false;
+  let amount = 1;
   let shape: Shape | null = null;
   let reach = 0;
   let dispersion = 0;
@@ -715,10 +716,17 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       if (!at.width || !at.height || at.bottom < 0 || at.right < 0 || at.top > innerHeight || at.left > innerWidth) return;
       measureScene(made, frame, on.pen);
 
+      if (amount <= 0.002) {
+        if (canvas.width && canvas.height) to.clearRect(0, 0, canvas.width, canvas.height);
+        last = "dematerialized";
+        return;
+      }
+
       const density = Math.min(devicePixelRatio || 1, 3);
       const scale = Math.min(at.width, at.height) / Math.min(shape.width, shape.height);
-      const pulled = (reach * scale) * 0.5;
-      const frost = blur * scale;
+      const mat = clamp(amount, 0, 1);
+      const pulled = reach * scale * 0.5 * amount;
+      const frost = blur * scale * mat;
       const margin = Math.ceil(pulled * (1 + 0.2 * dispersion)) + 1;
       const tint = getComputedStyle(glass).backgroundColor;
       const from = made.from;
@@ -728,9 +736,10 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         at.width.toFixed(2),
         at.height.toFixed(2),
         density,
-        pulled,
+        pulled.toFixed(2),
         dispersion,
-        frost,
+        frost.toFixed(2),
+        mat.toFixed(3),
         tint,
         fieldKey,
         made.key,
@@ -816,7 +825,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(on.finish.program);
       gl.bindTexture(gl.TEXTURE_2D, seen);
-      gl.uniform1f(on.finish.at.saturation!, 1.5);
+      gl.uniform1f(on.finish.at.saturation!, 1 + 0.5 * mat);
       gl.uniform4f(on.finish.at.tint!, ...parseCssColour(pen, tint));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -846,7 +855,12 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         drawnLenses.delete(drawn);
       }
     },
-    update() {},
+    update(next) {
+      if (next === undefined) return;
+      amount = clamp(next, 0, 1.5);
+      layer.style.opacity = String(clamp(amount, 0, 1));
+      last = "";
+    },
     refit() {
       if (active) read();
     },

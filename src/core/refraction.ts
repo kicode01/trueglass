@@ -49,13 +49,23 @@ export function rimMap(
   const lx = Math.SQRT2 * Math.cos(rad);
   const ly = Math.SQRT2 * Math.sin(rad);
 
+  const band = 2 * RIM_WIDTH + half;
+  const innerYLimit = halfHeight - Math.max(corner, band);
+  const sideBandCols = Math.ceil(band * density) + 2;
+  const skipMidRow = columns > sideBandCols * 2 + 2;
+
   for (let row = 0; row < rows; row++) {
     const y = ((row + 0.5) / rows) * height - halfHeight;
     const ay = y < 0 ? -y : y;
     const sy = y < 0 ? -1 : 1;
     const qy = ay - halfHeight + corner;
     const rowOff = row * columns;
+    const canSkipInterior = skipMidRow && ay < innerYLimit;
+    const rightJumpCol = columns - sideBandCols;
     for (let column = 0; column < columns; column++) {
+      if (canSkipInterior && column === sideBandCols) {
+        column = rightJumpCol;
+      }
       const x = ((column + 0.5) / columns) * width - halfWidth;
       const depth = -distance(x, y, halfWidth, halfHeight, corner);
       if (depth < -half || depth > 2 * RIM_WIDTH) continue;
@@ -115,6 +125,8 @@ function parseColour(context: CanvasRenderingContext2D, colour: string): Colour 
 
 const rims = new Map<string, string>();
 let palette: CanvasRenderingContext2D | null | undefined;
+let rimScratchCanvas: HTMLCanvasElement | null = null;
+let rimScratchCtx: CanvasRenderingContext2D | null = null;
 
 function getPalette(): CanvasRenderingContext2D | null {
   if (palette !== undefined) return palette;
@@ -126,6 +138,19 @@ function getPalette(): CanvasRenderingContext2D | null {
     palette = null;
   }
   return palette;
+}
+
+function getRimScratch(columns: number, rows: number): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } | null {
+  if (!rimScratchCanvas) {
+    rimScratchCanvas = document.createElement("canvas");
+    rimScratchCtx = rimScratchCanvas.getContext("2d");
+  }
+  if (!rimScratchCtx) return null;
+  if (rimScratchCanvas.width !== columns || rimScratchCanvas.height !== rows) {
+    rimScratchCanvas.width = columns;
+    rimScratchCanvas.height = rows;
+  }
+  return { canvas: rimScratchCanvas, context: rimScratchCtx };
 }
 
 function paintRim(element: HTMLElement): void {
@@ -141,18 +166,18 @@ function paintRim(element: HTMLElement): void {
   const angleStr = style.getPropertyValue("--lg-light-angle").trim();
   const angleProp = angleStr ? parseFloat(angleStr) : NaN;
   const lightAngle = Number.isFinite(angleProp) ? angleProp : -135;
-  const lightKey = Math.abs(lightAngle + 135) < 0.01 ? "-135" : String(Math.round(lightAngle / 2) * 2);
-  const density = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 3) : 1;
+  // Rim facing |nx*lx + ny*ly| is 180deg-periodic; fold angle to maximize cache reuse
+  const folded = ((lightAngle % 180) + 180) % 180;
+  const lightKey = Math.abs(lightAngle + 135) < 0.01 ? "-135" : String(Math.round(folded / 2) * 2);
+  const density = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
   const key = [shape.width, shape.height, shape.radius, shine.toFixed(2), edge.join(","), lightKey, density].join("|");
 
   let url = rims.get(key);
   if (!url) {
     const { columns, rows, data } = rimMap(shape, shine, density, edge, lightAngle);
-    const canvas = document.createElement("canvas");
-    canvas.width = columns;
-    canvas.height = rows;
-    const context = canvas.getContext("2d");
-    if (!context) return;
+    const scratch = getRimScratch(columns, rows);
+    if (!scratch) return;
+    const { canvas, context } = scratch;
     const image = context.createImageData(columns, rows);
     image.data.set(data);
     context.putImageData(image, 0, 0);
@@ -161,7 +186,7 @@ function paintRim(element: HTMLElement): void {
     } catch {
       return;
     }
-    if (rims.size > 96) {
+    if (rims.size > 160) {
       const oldest = rims.keys().next().value;
       if (oldest !== undefined) rims.delete(oldest);
     }
@@ -314,7 +339,8 @@ function profile(bezel: number, thickness: number): { samples: Float32Array; max
 }
 
 function selectionMaps(width: number, height: number, radius: number) {
-  const density = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
+  const density = typeof window !== "undefined" ? Math.min((devicePixelRatio || 1) * 1.5, 3) : 1;
+  const half = 0.5 / density;
   const bezel = clamp(Math.min(width, height) * 0.12, 4, 10);
   const thickness = clamp(Math.min(width, height) * 0.2, 8, 24);
   const { samples, maximum } = profile(bezel, thickness);
@@ -371,19 +397,20 @@ function selectionMaps(width: number, height: number, radius: number) {
       shine.data[i] = shine.data[i + 1] = shine.data[i + 2] = 255;
 
       let alpha = 0;
-      if (dist >= 0) {
-        const bands = [0.18, 0.42, 0.66].map((centre) => Math.exp(-(((dist - centre) / 0.22) ** 2)));
+      if (dist >= -half && dist < 3.0) {
+        const cover = clamp((dist + half) * density, 0, 1);
+        const bands = [0.42, 0.62, 0.82].map((centre) => Math.exp(-(((dist - centre) / 0.45) ** 2)));
         const peak = Math.max(...bands);
-        alpha = peak * (0.06 + 0.8 * glint + 0.35 * reflected) * 0.85;
+        alpha = cover * peak * (0.08 + 0.72 * glint + 0.34 * reflected) * 0.85;
         for (let channel = 0; channel < 3; channel++) {
-          shine.data[i + channel] = Math.round(255 * (0.65 + 0.35 * (peak ? bands[channel]! / peak : 0)));
+          shine.data[i + channel] = Math.round(255 * (0.84 + 0.16 * (peak ? bands[channel]! / peak : 0)));
         }
-        const wide = [0.4, 0.5, 0.6].map((centre) => Math.exp(-(((dist - centre) / 0.4) ** 2)));
+        const wide = [0.45, 0.58, 0.72].map((centre) => Math.exp(-(((dist - centre) / 0.48) ** 2)));
         const top = Math.max(...wide);
         for (let channel = 0; channel < 3; channel++) {
-          bright.data[i + channel] = Math.round(255 * (0.85 + 0.15 * (top ? wide[channel]! / top : 0)));
+          bright.data[i + channel] = Math.round(255 * (0.88 + 0.12 * (top ? wide[channel]! / top : 0)));
         }
-        bright.data[i + 3] = Math.round(clamp(top * (0.55 + 0.3 * glint + 0.15 * reflected), 0, 1) * 255);
+        bright.data[i + 3] = Math.round(clamp(cover * top * (0.55 + 0.3 * glint + 0.15 * reflected), 0, 1) * 255);
       }
       shine.data[i + 3] = Math.round(clamp(alpha, 0, 1) * 255);
     }
@@ -461,6 +488,7 @@ function fitSelection(element: HTMLElement, filtered: boolean): void {
 
 export interface RefractionHandle {
   refit(): void;
+  repaintRim(): void;
   materialize(instant?: boolean): void;
   dematerialize(instant?: boolean): void;
   bendProgress(): number;
@@ -488,6 +516,44 @@ export function attachRefraction(
   let activeLens: Lens | null = null;
   let usesDrawn = false;
 
+  const smoothstep = (edge0: number, edge1: number, x: number) => {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
+
+  const applyBend = () => {
+    if (selection) return;
+    const isIdentity = element.getAttribute("data-material") === "identity";
+    const m = clamp(bendScale, 0, 1);
+    // Front-load refractive curvature + subtle caustic swell so light bends BEFORE frost/label fill in
+    const bendVisual = m <= 0.002 ? 0 : Math.min(1.4, Math.pow(m, 0.52) * (1 + 0.32 * Math.sin(m * Math.PI)));
+    const rimAlpha = m <= 0.002 ? 0 : Math.min(1, Math.pow(m, 0.62) * 1.15);
+    const surfaceAlpha = smoothstep(0.28, 0.94, m);
+    const contentAlpha = smoothstep(0.32, 0.92, m);
+    const effectiveBend = isIdentity ? 0 : bendVisual;
+
+    if (m >= 0.999) {
+      element.style.removeProperty("--lg-materialize");
+      element.style.removeProperty("--lg-rim-alpha");
+      element.style.removeProperty("--lg-surface-alpha");
+      element.style.removeProperty("--lg-content-alpha");
+      element.removeAttribute("data-materializing");
+    } else {
+      element.style.setProperty("--lg-materialize", m.toFixed(4));
+      element.style.setProperty("--lg-rim-alpha", rimAlpha.toFixed(4));
+      element.style.setProperty("--lg-surface-alpha", surfaceAlpha.toFixed(4));
+      element.style.setProperty("--lg-content-alpha", contentAlpha.toFixed(4));
+      element.setAttribute("data-materializing", "");
+    }
+    element.toggleAttribute("data-dematerialized", m < 0.01);
+
+    if (boundSource && activeLens) {
+      activeLens.update(effectiveBend);
+      return;
+    }
+    if (refractsBackdrop()) fitBackdropLens(element, GLASS, effectiveBend);
+  };
+
   const fit = () => {
     paintRim(element);
     if (!boundSource && element.isConnected) {
@@ -498,7 +564,7 @@ export function attachRefraction(
         usesDrawn = drawsLens();
         activeLens = usesDrawn ? createDrawnLens(element, found, GLASS) : createLens(element, found, GLASS);
         activeLens.setActive(true);
-        activeLens.update(bendScale);
+        applyBend();
         if (!usesDrawn) {
           let lenses = followed.get(found);
           if (!lenses) followed.set(found, (lenses = new Set()));
@@ -510,10 +576,8 @@ export function attachRefraction(
     }
     if (boundSource && activeLens) {
       activeLens.refit();
-      activeLens.update(bendScale);
-      return;
     }
-    if (refractsBackdrop()) fitBackdropLens(element, GLASS, bendScale);
+    applyBend();
   };
 
   const fitting = selection
@@ -522,13 +586,21 @@ export function attachRefraction(
         () => fitSelection(element, bendsBackdrop && refractsBackdrop()),
         bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter"),
       )
-    : refitting(element, fit, ["--lg-filter", "--lg-rim"]);
+    : refitting(element, fit, [
+        "--lg-filter",
+        "--lg-rim",
+        "--lg-materialize",
+        "--lg-rim-alpha",
+        "--lg-surface-alpha",
+        "--lg-content-alpha",
+      ]);
 
-  const bendSpring = createSpring(bendScale, 360, 32, (v) => {
+  const bendSpring = createSpring(bendScale, 72, 14, (v) => {
     bendScale = Math.max(0, Math.min(1.25, v));
-    fitting.refit();
+    applyBend();
   });
 
+  if (!selection) applyBend();
   const stopWatching = selection ? () => {} : onThemeChange(() => paintRim(element));
   if (materializeOnMount) {
     requestAnimationFrame(() => bendSpring.set(1));
@@ -536,12 +608,19 @@ export function attachRefraction(
 
   const handle: RefractionHandle = {
     refit: () => fitting.refit(),
+    repaintRim: () => {
+      if (!selection) paintRim(element);
+    },
     materialize(instant = false) {
-      bendSpring.set(0, true);
       if (instant) {
         bendSpring.set(1, true);
-      } else {
+        return;
+      }
+      if (bendScale > 0.85) {
+        bendSpring.set(0, true);
         requestAnimationFrame(() => bendSpring.set(1, false));
+      } else {
+        bendSpring.set(1, false);
       }
     },
     dematerialize(instant = false) {
@@ -562,6 +641,8 @@ export function attachRefraction(
       activeLens = null;
       boundSource = null;
       element.removeAttribute("data-rim");
+      element.removeAttribute("data-materializing");
+      element.removeAttribute("data-dematerialized");
     },
   };
 
