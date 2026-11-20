@@ -50,8 +50,8 @@ export function rimMap(
   const ly = Math.SQRT2 * Math.sin(rad);
 
   const band = 2 * RIM_WIDTH + half;
-  const innerYLimit = halfHeight - Math.max(corner, band);
-  const sideBandCols = Math.ceil(band * density) + 2;
+  const innerYLimit = halfHeight - band;
+  const sideBandCols = Math.ceil(Math.max(corner, band) * density) + 2;
   const skipMidRow = columns > sideBandCols * 2 + 2;
 
   for (let row = 0; row < rows; row++) {
@@ -308,6 +308,7 @@ function findBackdrop(element: HTMLElement): HTMLElement | null {
 
 const followed = new Map<HTMLElement, Set<Lens>>();
 let following = 0;
+let followIdleFrames = 0;
 let visibilityBound = false;
 
 function follow(): void {
@@ -316,26 +317,45 @@ function follow(): void {
     return;
   }
   const vh = typeof window !== "undefined" ? window.innerHeight || 900 : 900;
+  let anyChanged = false;
   for (const [source, lenses] of followed) {
     const rect = source.getBoundingClientRect();
     if (rect.bottom < -120 || rect.top > vh + 120) continue;
-    lenses.values().next().value?.update();
+    if (lenses.values().next().value?.update()) anyChanged = true;
   }
-  following = followed.size ? requestAnimationFrame(follow) : 0;
+  if (anyChanged) {
+    followIdleFrames = 0;
+  } else {
+    followIdleFrames++;
+  }
+  following = followed.size && followIdleFrames < 24 ? requestAnimationFrame(follow) : 0;
+}
+
+export function wakeFollowLoop(): void {
+  followIdleFrames = 0;
+  if (!following && followed.size && (typeof document === "undefined" || !document.hidden)) {
+    following = requestAnimationFrame(follow);
+  }
 }
 
 function ensureFollowLoop(): void {
   if (!visibilityBound && typeof document !== "undefined") {
     visibilityBound = true;
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && followed.size && !following) {
-        following = requestAnimationFrame(follow);
-      }
+      if (!document.hidden) wakeFollowLoop();
     });
+    if (typeof window !== "undefined") {
+      const wakeOpts = { capture: true, passive: true } as const;
+      window.addEventListener("scroll", wakeFollowLoop, wakeOpts);
+      window.addEventListener("resize", wakeFollowLoop, { passive: true });
+      window.addEventListener("pointerdown", wakeFollowLoop, wakeOpts);
+      window.addEventListener("pointermove", wakeFollowLoop, wakeOpts);
+      window.addEventListener("wheel", wakeFollowLoop, wakeOpts);
+      window.addEventListener("touchmove", wakeFollowLoop, wakeOpts);
+      window.addEventListener("keydown", wakeFollowLoop, wakeOpts);
+    }
   }
-  if (!following && followed.size && (typeof document === "undefined" || !document.hidden)) {
-    following = requestAnimationFrame(follow);
-  }
+  wakeFollowLoop();
 }
 
 const SELECTION_PROPERTIES = ["--lg-filter", "--lg-rim", "--lg-rim-bright"];
@@ -573,6 +593,11 @@ export function attachRefraction(
 
     if (boundSource && activeLens) {
       activeLens.update(effectiveBend);
+      wakeFollowLoop();
+      return;
+    }
+    if (!bendsBackdrop) {
+      element.style.removeProperty("--lg-filter");
       return;
     }
     if (refractsBackdrop()) fitBackdropLens(element, GLASS, effectiveBend);
@@ -580,6 +605,10 @@ export function attachRefraction(
 
   const fit = () => {
     paintRim(element);
+    if (!bendsBackdrop) {
+      element.style.removeProperty("--lg-filter");
+      return;
+    }
     if (!boundSource && element.isConnected) {
       const found = findBackdrop(element);
       if (found) {
@@ -600,6 +629,7 @@ export function attachRefraction(
     }
     if (boundSource && activeLens) {
       activeLens.refit();
+      wakeFollowLoop();
     }
     applyBend();
   };

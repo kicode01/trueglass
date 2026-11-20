@@ -431,7 +431,7 @@ function collectText(node: Text, parent: Element, style: CSSStyleDeclaration, al
 }
 
 interface Drawn {
-  draw(frame: number): void;
+  draw(frame: number): boolean;
 }
 
 interface Whole {
@@ -477,6 +477,7 @@ function getScene(source: HTMLElement): Scene {
   };
   const mark = () => {
     made.stale = true;
+    wakeTick();
   };
   const observer = new MutationObserver((records) => {
     if (records.some((record) => !(record.target instanceof Element) || !record.target.closest(".lg-drawn"))) mark();
@@ -635,6 +636,7 @@ function paintWhole(on: Stage, made: Scene, density: number): Whole | null {
 
 const drawnLenses = new Set<Drawn>();
 let ticking = 0;
+let drawnIdleFrames = 0;
 let frames = 0;
 let drawnVisBound = false;
 
@@ -644,22 +646,42 @@ function tick(): void {
     return;
   }
   frames++;
-  for (const lens of drawnLenses) lens.draw(frames);
-  ticking = drawnLenses.size ? requestAnimationFrame(tick) : 0;
+  let anyDrawn = false;
+  for (const lens of drawnLenses) {
+    if (lens.draw(frames)) anyDrawn = true;
+  }
+  if (anyDrawn) {
+    drawnIdleFrames = 0;
+  } else {
+    drawnIdleFrames++;
+  }
+  ticking = drawnLenses.size && drawnIdleFrames < 24 ? requestAnimationFrame(tick) : 0;
+}
+
+function wakeTick(): void {
+  drawnIdleFrames = 0;
+  if (!ticking && drawnLenses.size && (typeof document === "undefined" || !document.hidden)) {
+    ticking = requestAnimationFrame(tick);
+  }
 }
 
 function ensureTick(): void {
   if (!drawnVisBound && typeof document !== "undefined") {
     drawnVisBound = true;
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && drawnLenses.size && !ticking) {
-        ticking = requestAnimationFrame(tick);
-      }
+      if (!document.hidden) wakeTick();
     });
+    if (typeof window !== "undefined") {
+      const wakeOpts = { capture: true, passive: true } as const;
+      window.addEventListener("scroll", wakeTick, wakeOpts);
+      window.addEventListener("resize", wakeTick, { passive: true });
+      window.addEventListener("pointerdown", wakeTick, wakeOpts);
+      window.addEventListener("pointermove", wakeTick, wakeOpts);
+      window.addEventListener("wheel", wakeTick, wakeOpts);
+      window.addEventListener("touchmove", wakeTick, wakeOpts);
+    }
   }
-  if (!ticking && drawnLenses.size && (typeof document === "undefined" || !document.hidden)) {
-    ticking = requestAnimationFrame(tick);
-  }
+  wakeTick();
 }
 
 const fieldCache = new Map<string, ReturnType<typeof lensField>>();
@@ -729,16 +751,17 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
   const drawn: Drawn = {
     draw(frame) {
       const on = stage();
-      if (!on || !to || !shape) return;
+      if (!on || !to || !shape) return false;
       if (layer.parentNode !== glass) glass.prepend(layer);
       const at = glass.getBoundingClientRect();
-      if (!at.width || !at.height || at.bottom < 0 || at.right < 0 || at.top > innerHeight || at.left > innerWidth) return;
+      if (!at.width || !at.height || at.bottom < 0 || at.right < 0 || at.top > innerHeight || at.left > innerWidth) return false;
       measureScene(made, frame, on.pen);
 
       if (amount <= 0.002) {
+        if (last === "dematerialized") return false;
         if (canvas.width && canvas.height) to.clearRect(0, 0, canvas.width, canvas.height);
         last = "dematerialized";
-        return;
+        return true;
       }
 
       const density = Math.min(devicePixelRatio || 1, 3);
@@ -763,7 +786,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         fieldKey,
         made.key,
       ].join("|");
-      if (key === last) return;
+      if (key === last) return false;
       last = key;
 
       const { gl, pen } = on;
@@ -781,7 +804,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         const across = Math.ceil((at.width + 2 * margin) * density);
         const down = Math.ceil((at.height + 2 * margin) * density);
         const near = new DOMRect(at.x - margin, at.y - margin, at.width + 2 * margin, at.height + 2 * margin);
-        if (!paintInto(on, made, on.under, near.x, near.y, density, across, down, near)) return;
+        if (!paintInto(on, made, on.under, near.x, near.y, density, across, down, near)) return false;
         under = on.under;
         span = [across, down];
         origin = [margin * density, margin * density];
@@ -853,6 +876,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         canvas.height = height;
       } else to.clearRect(0, 0, width, height);
       to.drawImage(on.canvas, 0, on.canvas.height - height, width, height, 0, 0, width, height);
+      return true;
     },
   };
 
@@ -879,9 +903,13 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       amount = clamp(next, 0, 1.5);
       layer.style.opacity = String(clamp(amount, 0, 1));
       last = "";
+      wakeTick();
     },
     refit() {
-      if (active) read();
+      if (active) {
+        read();
+        wakeTick();
+      }
     },
     destroy() {
       this.setActive(false);

@@ -279,11 +279,27 @@ export function lensMap(shape: Shape, options: LensOptions, light: Light, densit
   const glowStart = (1 - light.spread) * Math.SQRT2;
   const glowRange = light.spread * Math.SQRT2;
 
+  // Fast interior skip for flat plateau inside bezel-only lenses
+  const bezelDepth = options.bezel ? depthOf(shape, options) : 0;
+  const corner = clamp(shape.radius, 0, Math.min(halfWidth, halfHeight));
+  const innerYLimit = options.bezel ? halfHeight - bezelDepth - 1.5 : -1;
+  const sideBand = Math.max(corner, bezelDepth) + 1.5;
+  const leftSkipCol = Math.min(columns, Math.ceil(sideBand * density) + 1);
+  const rightSkipCol = Math.max(leftSkipCol, columns - leftSkipCol);
+  const canSkipFlatMid = options.bezel && rightSkipCol > leftSkipCol + 2;
+
   for (let row = 0; row < rows; row++) {
     const y = ((row + 0.5) / rows) * height - halfHeight;
+    const ay = y < 0 ? -y : y;
     const nyNorm = clamp(y / halfHeight, -1, 1);
     const rowOff = row * columns;
+    const skipRowMid = canSkipFlatMid && ay < innerYLimit;
     for (let column = 0; column < columns; column++) {
+      if (skipRowMid && column === leftSkipCol) {
+        shape32.fill(0xff000000, rowOff + leftSkipCol, rowOff + rightSkipCol);
+        column = rightSkipCol - 1;
+        continue;
+      }
       const pxIdx = rowOff + column;
       const x = ((column + 0.5) / columns) * width - halfWidth;
       pullAt(x, y, pull);
@@ -300,7 +316,8 @@ export function lensMap(shape: Shape, options: LensOptions, light: Light, densit
       if (falloff > 0) {
         const ax = ((0.5 - 0.5 * pull.x * falloff) * 255 + 0.5) | 0;
         const dy = ((0.5 - 0.5 * pull.y * falloff) * 255 + 0.5) | 0;
-        across32[pxIdx] = 0xff000000 | (ax << 16) | (ax << 8) | ax;
+        // Pack R=ax, G=dy, B=128, A=255 into across32 so userSpaceOnUse filters displace X & Y in 1 pass
+        across32[pxIdx] = 0xff800000 | (dy << 8) | ax;
         down32[pxIdx] = 0xff000000 | (dy << 16) | (dy << 8) | dy;
       }
 
@@ -380,9 +397,10 @@ function encodeMaps(key: string, draw: () => LensMap): EncodedMaps | null {
     }
   };
 
+  const needDown = boxUnits();
   const result: EncodedMaps = {
     across: toPng(map.across),
-    down: toPng(map.down),
+    down: needDown ? toPng(map.down) : "",
     light: toPng(map.light),
     shape: toPng(map.shape),
   };
@@ -408,7 +426,7 @@ const CHANNELS = [
 
 interface GraphPart {
   boxed: SVGElement[];
-  rays: [SVGElement, SVGElement][];
+  rays: [SVGElement, SVGElement?][];
   soften?: SVGElement;
 }
 
@@ -496,6 +514,76 @@ function buildFilterGraph(lenses: BendSpec[], box: boolean, standIn: boolean): F
   const parts = lenses.map(({ maps, shine, blur, ink }, k): GraphPart => {
     const merged = (name: string) => (single ? name : `${name}-${k}`);
     const image = (href: string, result: string) => svgEl("feImage", { href, preserveAspectRatio: "none", result });
+
+    if (!box) {
+      const boxed: SVGElement[] = [
+        image(maps.across, `across-${k}`),
+        image(maps.light, merged("raw")),
+        svgEl("feFlood", { "flood-color": "rgb(128, 128, 128)", result: `neutral-${k}` }),
+      ];
+      if (standIn) boxed.push(image(maps.shape, merged("shape")));
+      filter.append(
+        ...boxed,
+        svgEl("feComposite", { in: `across-${k}`, in2: `neutral-${k}`, operator: "over", result: `field-${k}` }),
+      );
+
+      const rays = CHANNELS.map((_, i): [SVGElement, SVGElement?] => {
+        const disp = svgEl("feDisplacementMap", {
+          in: "SourceGraphic",
+          in2: `field-${k}`,
+          xChannelSelector: "R",
+          yChannelSelector: "G",
+          result: `ray-${k}-${i}`,
+        });
+        boxed.push(disp);
+        filter.append(disp);
+        return [disp];
+      });
+
+      filter.append(...(ink ? inkedPass(k, ink) : spreadPass(k)));
+
+      let soften: SVGElement | undefined;
+      if (blur) {
+        soften = svgEl("feGaussianBlur", { in: `bent-${k}`, result: `soft-${k}` });
+        const weight = image(maps.shape, `weight-${k}`);
+        boxed.push(weight);
+        filter.append(
+          weight,
+          svgEl("feColorMatrix", {
+            in: `weight-${k}`,
+            type: "matrix",
+            values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0",
+            result: `bends-${k}`,
+          }),
+          soften,
+          svgEl("feComposite", { in: `soft-${k}`, in2: `bends-${k}`, operator: "in", result: `soft-in-${k}` }),
+          svgEl("feComposite", { in: `bent-${k}`, in2: `bends-${k}`, operator: "out", result: `sharp-${k}` }),
+          svgEl("feComposite", { in: `soft-in-${k}`, in2: `sharp-${k}`, operator: "arithmetic", k2: 1, k3: 1, result: `softened-${k}` }),
+        );
+      }
+
+      const bent = blur ? `softened-${k}` : `bent-${k}`;
+      let lit = bent;
+      if (shine > 0) {
+        const white = `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1 0 ${-128 / 255}`;
+        filter.append(
+          svgEl("feColorMatrix", { in: merged("raw"), type: "matrix", values: white, result: `glint-${k}` }),
+          svgEl("feComposite", { in: `glint-${k}`, in2: bent, operator: "arithmetic", k2: shine, k3: 1, result: `lit-${k}` }),
+        );
+        lit = `lit-${k}`;
+      } else if (shine < 0) {
+        const row = `0 0 ${shine} 0 ${1 - (128 * shine) / 255}`;
+        filter.append(
+          svgEl("feColorMatrix", { in: merged("raw"), type: "matrix", values: `${row}  ${row}  ${row}  0 0 0 0 1`, result: `shade-${k}` }),
+          svgEl("feComposite", { in: `shade-${k}`, in2: bent, operator: "arithmetic", k1: 1, result: `lit-${k}` }),
+        );
+        lit = `lit-${k}`;
+      }
+
+      filter.append(svgEl("feComposite", { in: lit, in2: merged("raw"), operator: "in", result: merged("inside") }));
+      return { boxed, rays, soften };
+    }
+
     const boxed = [
       image(maps.across, `across-${k}`),
       image(maps.down, `down-${k}`),
@@ -617,7 +705,7 @@ function placeLenses(fg: FilterGraph, placed: PlacedLens[], across: number, down
     const spectrum = [1 + 0.2 * lens.dispersion, 1 + 0.1 * lens.dispersion, 1];
     part.rays.forEach(([pullAcross, pullDown], i) => {
       pullAcross.setAttribute("scale", String((box ? lens.reach / across : lens.reach) * spectrum[i]!));
-      pullDown.setAttribute("scale", String((box ? lens.reach / down : lens.reach) * spectrum[i]!));
+      pullDown?.setAttribute("scale", String((lens.reach / down) * spectrum[i]!));
     });
     const blur = Math.max(lens.blur, 0.01);
     part.soften?.setAttribute("stdDeviation", box ? `${blur / across} ${blur / down}` : String(blur));
@@ -679,7 +767,8 @@ function fitLens(glass: HTMLElement, options: LensOptions): FitResult | null {
   const { width, height, radius } = shape;
   const { reach, dispersion, page } = tuningOf(style, shape, options);
   const shine = options.paintsLight ? 0 : options.shine === undefined ? page : Math.sign(page || 1) * options.shine;
-  const density = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
+  const baseDensity = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
+  const density = width * height > 32000 ? 1 : baseDensity;
   const baseTheme = page < 0 && !options.paintsLight ? LIGHT_LIGHT : DARK_LIGHT;
   const light: Light = {
     ...baseTheme,
@@ -696,7 +785,7 @@ function fitLens(glass: HTMLElement, options: LensOptions): FitResult | null {
 
 export interface Lens {
   setActive(active: boolean): void;
-  update(amount?: number): void;
+  update(amount?: number): boolean | void;
   refit(): void;
   destroy(): void;
 }
@@ -725,7 +814,7 @@ interface Surface {
 const surfaces = new Map<HTMLElement, Surface>();
 let madeCount = 0;
 
-function renderSurface(surface: Surface): void {
+function renderSurface(surface: Surface): boolean {
   const { content } = surface;
   const across = content.offsetWidth;
   const down = content.offsetHeight;
@@ -749,11 +838,12 @@ function renderSurface(surface: Surface): void {
   }
 
   if (!shown.length) {
+    const changed = surface.placed !== "";
     surface.placed = "";
     content.style.removeProperty("filter");
     if (surface.standIn) content.style.removeProperty("visibility");
     surface.standIn = false;
-    return;
+    return changed;
   }
 
   const box = boxUnits();
@@ -772,7 +862,7 @@ function renderSurface(surface: Surface): void {
   const next = [across, down, ...placed.flatMap((p) => [p.x, p.y, p.width, p.height, p.reach, p.dispersion, p.blur])]
     .map((v) => v.toFixed(2))
     .join(" ");
-  if (next === surface.placed) return;
+  if (next === surface.placed) return false;
   surface.placed = next;
   placeLenses(surface.graph, placed, across, down, box);
   surface.graph.filter.id = `${surface.name}-${++surface.version}`;
@@ -790,6 +880,7 @@ function renderSurface(surface: Surface): void {
       size: `${width}px ${height}px, 100% 100%`,
     });
   }
+  return true;
 }
 
 const MASKING = ["image", "position", "size", "repeat", "composite"] as const;
@@ -847,7 +938,8 @@ export function createLens(glass: HTMLElement, content: HTMLElement, options: Le
     },
     update(amount) {
       if (amount !== undefined) member.amount = clamp(amount, 0, 1.5);
-      if (active) renderSurface(shared);
+      if (active) return renderSurface(shared);
+      return false;
     },
     refit() {
       if (!active) return;
@@ -935,12 +1027,58 @@ export function fitBackdropLens(glass: HTMLElement, options: LensOptions, bendSc
         backdropFilters.delete(oldestKey);
       }
     }
-    const built = buildFilterGraph([{ maps, shine }], false, false);
-    placeLenses(built, [{ x: 0, y: 0, width, height, reach: scaledReach, dispersion, blur: 0 }], width, height, false);
     const name = `fluid-glass-backdrop-${madeCount++}`;
-    built.filter.id = name;
-    svgContainer().append(built.filter);
-    entry = { name, el: built.filter };
+    if (shine === 0) {
+      // Lean 8-node direct RG displacement filter when shine === 0 (eliminates 15 redundant nodes per backdrop filter)
+      const box = { x: 0, y: 0, width, height };
+      const filter = svgEl("filter", {
+        id: name,
+        ...box,
+        filterUnits: "userSpaceOnUse",
+        primitiveUnits: "userSpaceOnUse",
+        "color-interpolation-filters": "sRGB",
+      });
+      filter.append(svgEl("feImage", { href: maps.across, ...box, preserveAspectRatio: "none", result: "field" }));
+      if (dispersion <= 0.01) {
+        filter.append(
+          svgEl("feDisplacementMap", {
+            in: "SourceGraphic",
+            in2: "field",
+            scale: scaledReach,
+            xChannelSelector: "R",
+            yChannelSelector: "G",
+          }),
+        );
+      } else {
+        const spectrum = [1 + 0.2 * dispersion, 1 + 0.1 * dispersion, 1];
+        CHANNELS.forEach((channel, i) => {
+          filter.append(
+            svgEl("feDisplacementMap", {
+              in: "SourceGraphic",
+              in2: "field",
+              scale: scaledReach * spectrum[i]!,
+              xChannelSelector: "R",
+              yChannelSelector: "G",
+              result: `ray-${i}`,
+            }),
+            matrix(`ray-${i}`, `${channel}  0 0 0 0.3333 0`, `ch-${i}`),
+          );
+        });
+        filter.append(
+          sumOp("ch-0", "ch-1", 1, 1, "ch-01"),
+          sumOp("ch-01", "ch-2", 1, 1, "spread"),
+          matrix("spread", "3 0 0 0 0  0 3 0 0 0  0 0 3 0 0  0 0 0 1 0", "bent"),
+        );
+      }
+      svgContainer().append(filter);
+      entry = { name, el: filter };
+    } else {
+      const built = buildFilterGraph([{ maps, shine }], false, false);
+      placeLenses(built, [{ x: 0, y: 0, width, height, reach: scaledReach, dispersion, blur: 0 }], width, height, false);
+      built.filter.id = name;
+      svgContainer().append(built.filter);
+      entry = { name, el: built.filter };
+    }
     backdropFilters.set(id, entry);
   }
   glass.style.setProperty("--lg-filter", `url("#${entry.name}")`);
