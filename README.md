@@ -1,9 +1,9 @@
-# Fluid Glass — Physically-Based Optical Engine & UI Suite
+# TrueGlass — Physically-Based Optical Glass Engine & UI Suite
 
-**Live Demo:** [https://fluid-glass-engine.vercel.app](https://fluid-glass-engine.vercel.app) ([Mirror](https://fluid-glass-sage.vercel.app))  
-**Repository:** [https://github.com/kicode01/fluid-glass](https://github.com/kicode01/fluid-glass)
+**Live Demo:** [https://trueglass.vercel.app](https://trueglass.vercel.app) ([true-glass.vercel.app](https://true-glass.vercel.app))  
+**Repository:** [https://github.com/kicode01/trueglass](https://github.com/kicode01/trueglass)
 
-A zero-dependency, physically-based **Fluid Glass** optical engine and interactive UI component library built in strict TypeScript (`ES2022`). Fluid Glass replaces uniform translucent blurs with real-time Snell's law bezel refraction, Cauchy RGB chromatic dispersion, continuous-curvature $G^2$ superellipse geometry, dynamic specular rim lighting, closed-form analytical spring physics, and $C^2$ cubic smooth-min (`sminCubic`) droplet fusion.
+A zero-dependency, physically-based **TrueGlass** optical engine and interactive UI component library built in strict TypeScript (`ES2022`). TrueGlass replaces uniform translucent blurs with real-time Snell's law bezel refraction, Cauchy RGB chromatic dispersion, continuous-curvature $G^2$ superellipse geometry, dynamic specular rim lighting, closed-form analytical spring physics, and $C^2$ cubic smooth-min (`sminCubic`) droplet fusion.
 
 ---
 
@@ -67,9 +67,9 @@ npm run build    # Type-check with tsc --noEmit and build production assets to d
 
 Import directly from [src/components/index.ts](src/components/index.ts) (alongside [src/styles.css](src/styles.css)):
 
-* **`createGlass(options)`**: Universal Fluid Glass container with automatic `[data-fluid-backdrop]` linking, `material` variants (`"regular" | "clear" | "identity"`), optional `dimmingScrim`, and `materialize()` / `dematerialize()`.
+* **`createGlass(options)`**: Universal TrueGlass container with automatic `[data-fluid-backdrop]` linking, `material` variants (`"regular" | "clear" | "identity"`), optional `dimmingScrim`, and `materialize()` / `dematerialize()`.
 * **`createGlassContainer(options)`**: Shared sampling container uniting child pills inside one WebGL2 pass with `sminCubic` liquid bridge morphing, chromatic neck dispersion, cross-sibling touch glow, and homogeneous material validation (throws if `"regular"` and `"clear"` children are mixed).
-* **`createButton(options)`**: Fluid Glass pill button with rubber-band spring press, tap shimmer sweep (`[data-shimmer]`), `glass` / `filled` variants, custom `tint`, `destructive` styling, and materialize-by-bending.
+* **`createButton(options)`**: TrueGlass pill button with rubber-band spring press, tap shimmer sweep (`[data-shimmer]`), `glass` / `filled` variants, custom `tint`, `destructive` styling, and materialize-by-bending.
 * **`createSwitch(options)`**: Dual-bed stand-in refraction switch with exclusion masking, spring lift, drag scrubbing, and asymptotic bounded overshoot.
 * **`createSlider(options)`**: Continuous or stepped slider with a lifted 60x40px magnifying thumb lens refracting an inset track layer.
 * **`createTabBar(options)` & `createSegmentedControl(options)`**: Three-layer synchronized ink refraction + chromatic dispersion capsule bars with interactive thumb dragging and scroll minimization support.

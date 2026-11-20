@@ -1679,15 +1679,14 @@ body {
 
 /* ================= ACCESSIBILITY MODES (MANDATORY FALLBACKS) ================= */
 
-:root[data-a11y-transparency="reduce"] .lg-glass,
-:root[data-a11y-transparency="reduce"] .lg-tab-lens.lg-glass,
+:root[data-a11y-transparency="reduce"] .lg-glass:not(.lg-tab-lens):not(.lens):not([data-variant="filled"]):not([data-material="identity"]),
 :root[data-a11y-transparency="reduce"] .lg-menu-surface {
   background-color: var(--lg-surface) !important;
   -webkit-backdrop-filter: blur(28px) saturate(1.1) !important;
   backdrop-filter: blur(28px) saturate(1.1) !important;
 }
 
-:root[data-a11y-contrast="high"] .lg-glass,
+:root[data-a11y-contrast="high"] .lg-glass:not(.lg-tab-lens):not([data-material="identity"]),
 :root[data-a11y-contrast="high"] .lg-layered-widget,
 :root[data-a11y-contrast="high"] .lg-menu-surface {
   border: 1.5px solid var(--lg-foreground) !important;

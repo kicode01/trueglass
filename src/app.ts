@@ -254,21 +254,21 @@ function mountApp(): void {
   titleHeading.innerHTML = `
     <svg class="title-glass" aria-hidden="true" focusable="false">
       <defs>
-        <text id="fluid-title-lettering" x="0" y="1">Fluid Glass</text>
-        <linearGradient id="fluid-title-face" x1="0" y1="0" x2="0.7" y2="1">
+        <text id="trueglass-title-lettering" x="0" y="1">TrueGlass</text>
+        <linearGradient id="trueglass-title-face" x1="0" y1="0" x2="0.7" y2="1">
           <stop stop-color="#edf5ff" stop-opacity="0.78"/>
           <stop offset="0.32" stop-color="#c4d1e3" stop-opacity="0.44"/>
           <stop offset="0.62" stop-color="#a6b5ce" stop-opacity="0.28"/>
           <stop offset="1" stop-color="#e3efff" stop-opacity="0.68"/>
         </linearGradient>
-        <linearGradient id="fluid-title-rim" x1="0" y1="0" x2="0.6" y2="1">
+        <linearGradient id="trueglass-title-rim" x1="0" y1="0" x2="0.6" y2="1">
           <stop stop-color="#fff" stop-opacity="0.96"/>
           <stop offset="0.3" stop-color="#dae6f6" stop-opacity="0.62"/>
           <stop offset="0.55" stop-color="#9eafc7" stop-opacity="0.18"/>
           <stop offset="0.78" stop-color="#e0ebfa" stop-opacity="0.42"/>
           <stop offset="1" stop-color="#fff" stop-opacity="0.92"/>
         </linearGradient>
-        <filter id="fluid-title-bevel" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+        <filter id="trueglass-title-bevel" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
           <feGaussianBlur in="SourceAlpha" stdDeviation="0.75" result="surface"/>
           <feSpecularLighting in="surface" surfaceScale="2.5" specularConstant="0.9" specularExponent="24" lighting-color="#f5f9ff" result="reflection">
             <feDistantLight azimuth="225" elevation="45"/>
@@ -276,21 +276,21 @@ function mountApp(): void {
           <feComposite in="reflection" in2="SourceAlpha" operator="in" result="bevel"/>
           <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="bevel"/></feMerge>
         </filter>
-        <filter id="fluid-title-edge" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+        <filter id="trueglass-title-edge" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
           <feMorphology in="SourceAlpha" operator="erode" radius="0.55" result="interior"/>
           <feComposite in="SourceAlpha" in2="interior" operator="out" result="rim"/>
           <feComposite in="SourceGraphic" in2="rim" operator="in"/>
         </filter>
       </defs>
-      <use href="#fluid-title-lettering" fill="url(#fluid-title-face)" filter="url(#fluid-title-bevel)"/>
-      <use href="#fluid-title-lettering" fill="url(#fluid-title-rim)" filter="url(#fluid-title-edge)"/>
-    </svg><span class="title-text">Fluid Glass</span>
+      <use href="#trueglass-title-lettering" fill="url(#trueglass-title-face)" filter="url(#trueglass-title-bevel)"/>
+      <use href="#trueglass-title-lettering" fill="url(#trueglass-title-rim)" filter="url(#trueglass-title-edge)"/>
+    </svg><span class="title-text">TrueGlass</span>
   `;
 
   const intro = document.createElement("p");
   intro.className = "intro";
   intro.textContent =
-    "Zero-dependency TypeScript implementation of physically-based Fluid Glass for the web — combining stand-in lens refraction, Snell’s law squircle bezels, chromatic dispersion, live tilt lighting, Clear ↔ Tinted continuum, Materialize-by-Bending, and adaptive luminance sensing.";
+    "Zero-dependency TypeScript implementation of physically-based TrueGlass for the web — combining stand-in lens refraction, Snell’s law squircle bezels, chromatic dispersion, live tilt lighting, Clear ↔ Tinted continuum, Materialize-by-Bending, and adaptive luminance sensing.";
 
   const linksRow = document.createElement("div");
   linksRow.className = "links-row";
@@ -419,7 +419,7 @@ function mountApp(): void {
   const magText = document.createElement("p");
   magText.className = "magnifier-text";
   magText.setAttribute("aria-hidden", "true");
-  magText.innerHTML = "Fluid<br/>Glass";
+  magText.innerHTML = "True<br/>Glass";
   magScene.append(magImg, magText);
 
   const lensGlass = createGlass({ className: "lens" });
@@ -1102,7 +1102,7 @@ function mountApp(): void {
     variant: "filled",
     onClick: () => {
       const res = benchmarkOptics(280, 56, 28, 24);
-      benchOut.textContent = `Full-grid scan: ${res.fullGridScanMs.toFixed(2)}ms | Fluid Glass kernel: ${res.fluidKernelMs.toFixed(2)}ms (${res.speedup}× faster, ${(res.pixelsSkippedRatio * 100).toFixed(0)}% interior skipped)`;
+      benchOut.textContent = `Full-grid scan: ${res.fullGridScanMs.toFixed(2)}ms | TrueGlass kernel: ${res.fluidKernelMs.toFixed(2)}ms (${res.speedup}× faster, ${(res.pixelsSkippedRatio * 100).toFixed(0)}% interior skipped)`;
     },
   });
   const benchOut = document.createElement("div");
@@ -1143,7 +1143,7 @@ function mountApp(): void {
         },
       ),
       rayCanvas,
-      optionPills(["Fluid Glass (Snell)", "Classic Frosted Blur", "2× Thick Menu", "Materialize Bending"], "Fluid Glass (Snell)", (m) => {
+      optionPills(["TrueGlass (Snell)", "Classic Frosted Blur", "2× Thick Menu", "Materialize Bending"], "TrueGlass (Snell)", (m) => {
         rayMode = m.startsWith("Classic") ? "frosted" : m.startsWith("2×") ? "thick-menu" : m.startsWith("Materialize") ? "materialize" : "liquid";
         if (rayMode === "materialize") {
           const t0 = performance.now();

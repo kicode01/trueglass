@@ -1,19 +1,21 @@
 {
-  "name": "fluid-glass",
+  "name": "trueglass",
   "version": "1.0.0",
   "private": false,
   "license": "MIT",
-  "description": "Zero-dependency physically-based Fluid Glass optical engine and UI component suite for the web.",
+  "description": "Zero-dependency physically-based TrueGlass optical engine and UI component suite for the web.",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kicode01/fluid-glass.git"
+    "url": "git+https://github.com/kicode01/trueglass.git"
   },
-  "homepage": "https://fluid-glass-engine.vercel.app",
+  "homepage": "https://trueglass.vercel.app",
   "bugs": {
-    "url": "https://github.com/kicode01/fluid-glass/issues"
+    "url": "https://github.com/kicode01/trueglass/issues"
   },
   "keywords": [
+    "trueglass",
+    "true-glass",
     "fluid-glass",
     "refraction",
     "snell-law",

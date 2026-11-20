@@ -394,4 +394,76 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
     const rMap = rimMap(shape, 0.35, 2, [255, 255, 255, 0.08], -135);
     expect(rMap.data.some((v, idx) => idx % 4 === 3 && v > 0)).toBe(true);
   });
+
+  it("excludes overlay lenses, magnifier lens, filled buttons, and identity glass from reduce-transparency opaque surface", async () => {
+    const fsSpecifier = "node:fs";
+    const pathSpecifier = "node:path";
+    const { readFileSync } = (await import(/* @vite-ignore */ fsSpecifier)) as {
+      readFileSync: (filePath: string, enc: "utf8") => string;
+    };
+    const { resolve } = (await import(/* @vite-ignore */ pathSpecifier)) as {
+      resolve: (...segments: string[]) => string;
+    };
+    const stylesCss = readFileSync(resolve("src", "styles.css"), "utf8");
+    const ruleMatch = stylesCss.match(/(:root\[data-a11y-transparency="reduce"\][^{]*)\{[\s\S]*?\}/);
+    expect(ruleMatch).not.toBeNull();
+    const selectorList = ruleMatch![1]!.trim();
+
+    const host = document.createElement("div");
+    const tabBar = createTabBar({
+      ariaLabel: "Library",
+      value: "radio",
+      items: [
+        { value: "home", label: "Home" },
+        { value: "radio", label: "Radio" },
+      ],
+    });
+    const seg = createSegmentedControl({
+      ariaLabel: "Range",
+      value: "week",
+      items: [
+        { value: "day", label: "Day" },
+        { value: "week", label: "Week" },
+      ],
+    });
+    const magnifierLens = createGlass({ className: "lens", materializeOnMount: false });
+    const glassBtn = createButton({ label: "Continue", variant: "glass", materializeOnMount: false });
+    const filledBtn = createButton({ label: "Run", variant: "filled", materializeOnMount: false });
+    const identityGlass = createGlass({ material: "identity", materializeOnMount: false });
+    const search = createSearchField({ placeholder: "Search" });
+    const menu = createMenu({ ariaLabel: "Options", items: [{ label: "Pin" }] });
+
+    host.append(
+      tabBar.element,
+      seg.element,
+      magnifierLens.element,
+      glassBtn.element,
+      filledBtn.element,
+      identityGlass.element,
+      search.element,
+      menu.element,
+    );
+    document.body.appendChild(host);
+
+    try {
+      setAccessibilityModes({ reduceTransparency: true });
+      const matched = new Set(Array.from(document.querySelectorAll(selectorList)));
+
+      expect(matched.has(tabBar.element.querySelector(".lg-tab-lens")!)).toBe(false);
+      expect(matched.has(seg.element.querySelector(".lg-tab-lens")!)).toBe(false);
+      expect(matched.has(magnifierLens.element)).toBe(false);
+      expect(matched.has(filledBtn.element)).toBe(false);
+      expect(matched.has(identityGlass.element)).toBe(false);
+
+      expect(matched.has(tabBar.element.querySelector(".lg-tab-bar-glass")!)).toBe(true);
+      expect(matched.has(seg.element.querySelector(".lg-tab-bar-glass")!)).toBe(true);
+      expect(matched.has(glassBtn.element)).toBe(true);
+      expect(matched.has(search.element)).toBe(true);
+      expect(matched.has(menu.element.querySelector(".lg-menu-surface")!)).toBe(true);
+    } finally {
+      [tabBar, seg, magnifierLens, glassBtn, filledBtn, identityGlass, search, menu].forEach((c) => c.destroy());
+      host.remove();
+      setAccessibilityModes({ reduceTransparency: false });
+    }
+  });
 });
