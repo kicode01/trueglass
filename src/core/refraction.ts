@@ -308,10 +308,34 @@ function findBackdrop(element: HTMLElement): HTMLElement | null {
 
 const followed = new Map<HTMLElement, Set<Lens>>();
 let following = 0;
+let visibilityBound = false;
 
 function follow(): void {
-  for (const lenses of followed.values()) lenses.values().next().value?.update();
+  if (typeof document !== "undefined" && document.hidden) {
+    following = 0;
+    return;
+  }
+  const vh = typeof window !== "undefined" ? window.innerHeight || 900 : 900;
+  for (const [source, lenses] of followed) {
+    const rect = source.getBoundingClientRect();
+    if (rect.bottom < -120 || rect.top > vh + 120) continue;
+    lenses.values().next().value?.update();
+  }
   following = followed.size ? requestAnimationFrame(follow) : 0;
+}
+
+function ensureFollowLoop(): void {
+  if (!visibilityBound && typeof document !== "undefined") {
+    visibilityBound = true;
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && followed.size && !following) {
+        following = requestAnimationFrame(follow);
+      }
+    });
+  }
+  if (!following && followed.size && (typeof document === "undefined" || !document.hidden)) {
+    following = requestAnimationFrame(follow);
+  }
 }
 
 const SELECTION_PROPERTIES = ["--lg-filter", "--lg-rim", "--lg-rim-bright"];
@@ -569,7 +593,7 @@ export function attachRefraction(
           let lenses = followed.get(found);
           if (!lenses) followed.set(found, (lenses = new Set()));
           lenses.add(activeLens);
-          following ||= requestAnimationFrame(follow);
+          ensureFollowLoop();
         }
         return;
       }

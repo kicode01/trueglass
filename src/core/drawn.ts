@@ -636,11 +636,30 @@ function paintWhole(on: Stage, made: Scene, density: number): Whole | null {
 const drawnLenses = new Set<Drawn>();
 let ticking = 0;
 let frames = 0;
+let drawnVisBound = false;
 
 function tick(): void {
+  if (typeof document !== "undefined" && document.hidden) {
+    ticking = 0;
+    return;
+  }
   frames++;
   for (const lens of drawnLenses) lens.draw(frames);
   ticking = drawnLenses.size ? requestAnimationFrame(tick) : 0;
+}
+
+function ensureTick(): void {
+  if (!drawnVisBound && typeof document !== "undefined") {
+    drawnVisBound = true;
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && drawnLenses.size && !ticking) {
+        ticking = requestAnimationFrame(tick);
+      }
+    });
+  }
+  if (!ticking && drawnLenses.size && (typeof document === "undefined" || !document.hidden)) {
+    ticking = requestAnimationFrame(tick);
+  }
 }
 
 const fieldCache = new Map<string, ReturnType<typeof lensField>>();
@@ -847,7 +866,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         glass.setAttribute("data-drawn", "");
         made.lenses.add(drawn);
         drawnLenses.add(drawn);
-        ticking ||= requestAnimationFrame(tick);
+        ensureTick();
       } else {
         layer.remove();
         glass.removeAttribute("data-drawn");

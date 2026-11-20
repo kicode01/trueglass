@@ -5,6 +5,33 @@
   "license": "MIT",
   "description": "Zero-dependency physically-based TrueGlass optical engine and UI component suite for the web.",
   "type": "module",
+  "main": "./dist-lib/index.js",
+  "module": "./dist-lib/index.js",
+  "types": "./dist-lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/index.d.ts",
+      "import": "./dist-lib/index.js"
+    },
+    "./core": {
+      "types": "./dist-lib/core/index.d.ts",
+      "import": "./dist-lib/core/index.js"
+    },
+    "./components": {
+      "types": "./dist-lib/components/index.d.ts",
+      "import": "./dist-lib/components/index.js"
+    },
+    "./styles.css": "./dist-lib/styles.css",
+    "./trueglass.css": "./dist-lib/styles.css"
+  },
+  "files": [
+    "dist-lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kicode01/trueglass.git"
@@ -29,6 +56,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "prepublishOnly": "npm test && npm run build:lib",
     "preview": "vite preview",
     "test": "vitest run"
   },

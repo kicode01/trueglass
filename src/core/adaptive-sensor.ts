@@ -96,8 +96,11 @@ export function attachAdaptiveBackdropSensor(
   let lastTheme: "light" | "dark" = (glassElement.getAttribute("data-theme") as "light" | "dark") || "light";
   let destroyed = false;
 
+  let lastSignature = "";
+
   const update = () => {
     if (destroyed) return;
+    if (typeof document !== "undefined" && document.hidden) return;
     const sample = sampleSource();
     if (!sample) return;
 
@@ -108,15 +111,22 @@ export function attachAdaptiveBackdropSensor(
       } else if (lastTheme === "dark" && sample.luminance > 0.50) {
         lastTheme = "light";
       }
+    }
+
+    const [ar, ag, ab] = sample.ambientRgb;
+    const sig = `${lastTheme}|${sample.luminance.toFixed(2)}|${sample.adaptiveShadowAlpha.toFixed(3)}|${sample.contrastVariance.toFixed(3)}|${ar},${ag},${ab}`;
+    if (sig === lastSignature) return;
+    lastSignature = sig;
+
+    if (surfaceSize !== "large") {
       glassElement.setAttribute("data-theme", lastTheme);
     }
 
     const activeSample: BackdropSample = {
       ...sample,
-      recommendedTheme: surfaceSize === "large" ? lastTheme : lastTheme,
+      recommendedTheme: lastTheme,
     };
 
-    const [ar, ag, ab] = sample.ambientRgb;
     glassElement.style.setProperty("--lg-ambient-spill", `rgb(${ar} ${ag} ${ab} / 0.18)`);
     glassElement.setAttribute("data-backdrop-luma", sample.luminance.toFixed(2));
     glassElement.style.setProperty("--lg-adaptive-shadow", sample.adaptiveShadowAlpha.toFixed(3));
@@ -125,7 +135,7 @@ export function attachAdaptiveBackdropSensor(
   };
 
   if (typeof window !== "undefined") {
-    timerId = window.setInterval(update, intervalMs);
+    if (intervalMs > 0) timerId = window.setInterval(update, intervalMs);
     requestAnimationFrame(update);
   }
 

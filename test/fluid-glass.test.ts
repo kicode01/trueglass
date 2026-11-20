@@ -405,7 +405,7 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
     const { resolve } = (await import(/* @vite-ignore */ pathSpecifier)) as {
       resolve: (...segments: string[]) => string;
     };
-    const stylesCss = readFileSync(resolve("src", "styles.css"), "utf8");
+    const stylesCss = readFileSync(resolve("src", "trueglass.css"), "utf8");
     const ruleMatch = stylesCss.match(/(:root\[data-a11y-transparency="reduce"\][^{]*)\{[\s\S]*?\}/);
     expect(ruleMatch).not.toBeNull();
     const selectorList = ruleMatch![1]!.trim();

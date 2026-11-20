@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/icon.png" alt="TrueGlass" width="128" height="128" />
+</p>
+
 # TrueGlass — Physically-Based Optical Glass Engine & UI Suite
 
 **Live Demo:** [https://trueglass.vercel.app](https://trueglass.vercel.app) ([true-glass.vercel.app](https://true-glass.vercel.app))  
@@ -9,15 +13,30 @@ A zero-dependency, physically-based **TrueGlass** optical engine and interactive
 
 ## Key Capabilities
 
-- **Zero Runtime Dependencies**: Pure TypeScript & Web Platform APIs (~22.3 KiB gzipped core engine; ~27.2 KiB gzipped with the full component suite).
-- **Hybrid Optical Pipeline**:
+- **Zero Runtime Dependencies & Publishable npm Package**: Pure TypeScript & Web Platform APIs with clean tree-shakeable ESM exports (`trueglass`, `trueglass/core`, `trueglass/components`, `trueglass/styles.css`) and full `.d.ts` declarations.
+- **Dual-Engine Cross-Browser Optical Pipeline**:
   - **sRGB-Locked SVG Filter Graph** ([src/core/lens.ts](src/core/lens.ts), [src/core/refraction.ts](src/core/refraction.ts)): Multi-channel `<feDisplacementMap>` with RGB chromatic split and an exact `inside`/`outside` alpha composite that leaves flat center interiors crystal-clear.
-  - **Shared WebGL2 Shaders & Cross-Browser Rasterizer** ([src/core/drawn.ts](src/core/drawn.ts), [src/core/webgl-stage.ts](src/core/webgl-stage.ts)): Hardware GPU `BEND` / `SOFTEN` / `FINISH` shader passes plus automatic fallback for browsers without SVG `backdrop-filter: url(...)` support.
-- **$G^2$ Superellipse ($L^4$) Geometry & Snell's Law Profiles** ([src/core/optics.ts](src/core/optics.ts)): Continuous-curvature squircle corner normals and precomputed Snell's law displacement LUTs eliminate $G^1$ specular kinks around rounded corners.
+  - **Shared WebGL2 Shaders & Cross-Browser Rasterizer** ([src/core/drawn.ts](src/core/drawn.ts), [src/core/webgl-stage.ts](src/core/webgl-stage.ts)): Hardware GPU `BEND` / `SOFTEN` / `FINISH` shader passes for browsers without SVG `backdrop-filter: url(...)` support (Safari/Firefox), with automatic hidden-tab and off-screen viewport pausing.
+- **Pure-GPU Dynamic Specular Rim & Pointer/Gyroscope Tilt Lighting** ([src/trueglass.css](src/trueglass.css), [src/core/interaction.ts](src/core/interaction.ts)): Drives directional dual-lobe specular rims directly from `--lg-light-angle` / `--lg-lx` / `--lg-ly` on the GPU with zero per-frame canvas baking, paired with lazy pointer/device-orientation tilt and shortest-arc `±180°` seam unwrapping.
+- **3D WebGL2 Crystal Glass Typography** ([src/glass-title.ts](src/glass-title.ts)): Exact 2D Euclidean Distance Transform (EDT) dome heightfield with Scharr normals, Schlick Fresnel reflections, Snell's law total internal reflection (TIR), Cauchy RGB prism dispersion, and interactive tilt caustics.
+- **$G^2$ Superellipse ($L^4$) Geometry & Snell's Law Profiles** ([src/core/optics.ts](src/core/optics.ts)): Continuous-curvature squircle corner normals and precomputed Snell's law displacement LUTs eliminate $G^1$ specular kinks around rounded corners, including dedicated meniscus lift & prismatic dispersion on `TabBar`.
 - **$C^2$ Droplet Fusion & Light Bleed (`createGlassContainer`)**: Evaluates multiple controls inside a single unified WebGL2 backdrop pass using `sminCubic(d1, d2, k)`, rendering continuous liquid bridges, RGB neck dispersion, Schlick Fresnel rims, and Gaussian pointer illumination bleeding across sibling controls.
+- **Material Variants, Clear ↔ Tinted Continuum & Materialize-by-Bending**: Supports `"regular" | "clear" | "identity"` glass materials, optional dimming scrim, continuous `--lg-tint-amount` modulation, and optical bend-in/bend-out `materialize()` / `dematerialize()` transitions.
 - **Closed-Form 2nd-Order Harmonic Springs** ([src/core/spring.ts](src/core/spring.ts)): Analytical solver covering underdamped, critically damped, and overdamped motion at 60–240 Hz without Euler drift.
-- **Adaptive Luminance & Contrast Sensor** ([src/core/adaptive-sensor.ts](src/core/adaptive-sensor.ts)): Samples backdrop luminance $Y$, horizontal spatial contrast variance $\sigma_Y$, and ambient chroma with hysteresis to flip light/dark polarity (`small`/`medium` controls), lock polarity with ambient color spill (`large` panels), and modulate grounding shadow opacity over text vs. plain white regions.
-- **Explicit Accessibility Controls** ([src/core/interaction.ts](src/core/interaction.ts), [src/styles.css](src/styles.css)): Opt-in `Reduce Transparency`, `Increase Contrast`, and `Reduce Motion` overrides scoped cleanly to `:root[data-a11y-*]` attributes.
+- **Event-Driven Adaptive Luminance & Contrast Sensor** ([src/core/adaptive-sensor.ts](src/core/adaptive-sensor.ts)): Samples backdrop luminance $Y$, horizontal spatial contrast variance $\sigma_Y$, and ambient chroma with hysteresis to flip light/dark polarity (`small`/`medium` controls), lock polarity with ambient color spill (`large` panels), and modulate grounding shadow opacity over text vs. plain white regions.
+- **Hardware Concentricity & Explicit Accessibility Overrides** ([src/core/interaction.ts](src/core/interaction.ts), [src/trueglass.css](src/trueglass.css)): `concentricRadius(outer, pad)` math plus opt-in `Reduce Transparency`, `Increase Contrast`, and `Reduce Motion` modes scoped cleanly to `:root[data-a11y-*]`.
+
+### What TrueGlass Ships Beyond Standard Glass Libraries
+
+| Capability | Typical CSS / Glisse-Style Demos | TrueGlass |
+| :--- | :--- | :--- |
+| Snell's Law Bezel + RGB Dispersion | Basic blur or Chromium-only filter | Dual-engine: sRGB SVG filter + WebGL2 fallback |
+| Single-Pass $C^2$ Droplet Fusion (`sminCubic`) | Not included | Built-in WebGL2 `createGlassContainer` + touch bleed |
+| Adaptive Luminance & Contrast Sensor | Manual light/dark toggle only | Hysteresis polarity flip, ambient spill & adaptive shadow |
+| Dynamic Tilt Specular Lighting | Static rim or heavy CPU re-baking | Pure-GPU `--lg-light-angle` + lazy pointer/gyro tilt |
+| Material Variants & Materialize-by-Bending | Single glass look / opacity fades | `regular` / `clear` / `scrim` / `identity` + optical bend |
+| First-Class Accessibility Overrides | Rarely handled | `reduceTransparency`, `increaseContrast`, `reduceMotion` |
+| Reusable npm Package (`trueglass/core` + CSS) | Demo repo only | Zero-dep tree-shakeable ESM + `.d.ts` + isolated `styles.css` |
 
 ---
 
@@ -37,13 +56,41 @@ flowchart LR
 
 ---
 
-## Getting Started
+## Installation & Quick Start
+
+```bash
+npm install trueglass
+```
+
+Import the stylesheet once and mount any component or headless glass surface:
+
+```ts
+import { createButton, createGlass, createTabBar } from "trueglass";
+import "trueglass/styles.css";
+
+const btn = createButton({
+  label: "Continue",
+  onClick: () => console.log("Pressed"),
+});
+document.body.appendChild(btn.element);
+```
+
+Want only the headless optical engine (Snell bezels, springs, adaptive luminance sensor) without UI widgets?
+
+```ts
+import { attachRefraction, attachAdaptiveBackdropSensor, createSpring } from "trueglass/core";
+```
+
+---
+
+## Local Development
 
 ```bash
 npm install
-npm run dev      # Start Vite development playground on http://localhost:5173/
-npm test         # Run Vitest unit test suite
-npm run build    # Type-check with tsc --noEmit and build production assets to dist/
+npm run dev        # Start Vite showcase on http://localhost:5173/
+npm test           # Run Vitest unit test suite
+npm run build      # Type-check and build showcase site to dist/
+npm run build:lib  # Build publishable npm library + .d.ts types + styles.css to dist-lib/
 ```
 
 ---

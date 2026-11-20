@@ -20,6 +20,7 @@ import {
   refitAllGlass,
   type GlassMaterial,
 } from "./components";
+import { mountGlassTitle } from "./glass-title";
 
 const ICON_PATHS = {
   search:
@@ -44,6 +45,8 @@ const ICON_PATHS = {
   copy: "M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z",
 };
 
+const GITHUB_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.35 1.12 2.92.86.09-.66.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.36 9.36 0 0 1 12 6.84c.85 0 1.71.12 2.51.35 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/></svg>`;
+
 function iconSvg(path: string): string {
   return `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="${path}"/></svg>`;
 }
@@ -60,6 +63,8 @@ const TAB_CHOICES = [
   { value: "radio", label: "Radio", iconHtml: iconSvg(ICON_PATHS.radio) },
   { value: "library", label: "Library", iconHtml: iconSvg(ICON_PATHS.library) },
 ];
+
+const CANVAS_INTER = '"Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 
 function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" | "white-text"): void {
   const ctx = canvas.getContext("2d");
@@ -85,7 +90,6 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.fillStyle = sun;
     ctx.fillRect(0, 40, w, 320);
 
-    // Distant headland silhouette
     ctx.fillStyle = "#5b4d56";
     ctx.beginPath();
     ctx.moveTo(0, 338);
@@ -95,7 +99,6 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.closePath();
     ctx.fill();
 
-    // Evening sea reflection with crisp fine horizontal ripples to showcase bezel Snell bending
     const sea = ctx.createLinearGradient(0, 338, 0, 520);
     sea.addColorStop(0, "#b9876e");
     sea.addColorStop(0.45, "#595e74");
@@ -115,9 +118,9 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.fillRect(0, 520, w, 285);
 
     ctx.fillStyle = "#18181b";
-    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+    ctx.font = `600 13px ${CANVAS_INTER}`;
     ctx.fillText("OPTICAL FIELD NOTE", 56, 566);
-    ctx.font = '700 28px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.font = `700 28px ${CANVAS_INTER}`;
     ctx.fillText("Lensing Over Structured Typography", 56, 604);
 
     ctx.strokeStyle = "rgba(24, 24, 27, 0.14)";
@@ -128,7 +131,7 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.stroke();
 
     ctx.fillStyle = "#27272a";
-    ctx.font = '400 18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+    ctx.font = `400 18px ${CANVAS_INTER}`;
     [
       "Curved superellipse bezels bend high-frequency typography cleanly",
       "along perimeter normals while leaving center glyphs razor-sharp.",
@@ -137,12 +140,11 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
       ctx.fillText(line, 56, 660 + idx * 32);
     });
 
-    // Pure white card zone (805..1040px): uniform zero variance so adaptive grounding shadow lightens
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 805, w, 235);
     ctx.fillStyle = "#94a3b8";
-    ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
-    ctx.fillText("Plain White Card Zone — Low Edge Variance (Lightened Shadow)", 168, 928);
+    ctx.font = `500 14px ${CANVAS_INTER}`;
+    ctx.fillText("Plain White Card Zone — Low Edge Variance (Lightened Shadow)", 160, 928);
 
     // Zone 3 (1040..1600px): Deep Starry Night & Nebula
     const night = ctx.createLinearGradient(0, 1040, 0, h);
@@ -173,19 +175,19 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "#0f172a";
-    ctx.font = '700 28px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.font = `700 28px ${CANVAS_INTER}`;
     ctx.fillText("Utilities (High-Contrast Text)", 56, 106);
     ["Favorites", "Hidden", "Recently Deleted", "Duplicates", "Receipts", "Handwriting"].forEach((label, idx) => {
       const y = 158 + idx * 72;
       ctx.fillStyle = "#f1f5f9";
       ctx.fillRect(52, y - 32, w - 104, 54);
       ctx.fillStyle = "#0f172a";
-      ctx.font = '600 19px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+      ctx.font = `600 19px ${CANVAS_INTER}`;
       ctx.fillText(label, 76, y + 2);
     });
     ctx.fillStyle = "#94a3b8";
-    ctx.font = '500 16px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
-    ctx.fillText("Plain White Region — Adaptive Shadow Lightens", 185, 1140);
+    ctx.font = `500 16px ${CANVAS_INTER}`;
+    ctx.fillText("Plain White Region — Adaptive Shadow Lightens", 180, 1140);
   }
 }
 
@@ -194,13 +196,45 @@ function stepMagnifierSpring(s: { value: number; speed: number }, target: number
   s.value += s.speed * dt;
 }
 
-function section(title: string, ...children: HTMLElement[]): HTMLElement {
+function studioSection(
+  id: string,
+  title: string,
+  description: string,
+  ...children: HTMLElement[]
+): HTMLElement {
   const sec = document.createElement("section");
   sec.className = "section";
+  sec.id = id;
+  const header = document.createElement("div");
+  header.className = "section-header";
+  const headText = document.createElement("div");
   const h2 = document.createElement("h2");
   h2.textContent = title;
-  sec.append(h2, ...children);
+  headText.appendChild(h2);
+  if (description) {
+    const desc = document.createElement("p");
+    desc.className = "section-desc";
+    desc.textContent = description;
+    headText.appendChild(desc);
+  }
+  header.appendChild(headText);
+  sec.append(header, ...children);
   return sec;
+}
+
+function studioCard(title: string, meta: string, ...children: HTMLElement[]): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "studio-card";
+  const head = document.createElement("div");
+  head.className = "studio-card-head";
+  const h3 = document.createElement("h3");
+  h3.textContent = title;
+  const sub = document.createElement("span");
+  sub.className = "studio-card-meta";
+  sub.textContent = meta;
+  head.append(h3, sub);
+  card.append(head, ...children);
+  return card;
 }
 
 function optionPills(options: string[], initial: string, onSelect: (opt: string) => void): HTMLElement {
@@ -223,14 +257,35 @@ function optionPills(options: string[], initial: string, onSelect: (opt: string)
   return wrap;
 }
 
-function codeBlock(initial = ""): { pre: HTMLPreElement; set(text: string): void } {
+function codeBlock(initial = ""): { wrap: HTMLDivElement; set(text: string): void } {
+  const wrap = document.createElement("div");
+  wrap.className = "code-wrap";
   const pre = document.createElement("pre");
   pre.className = "code-block";
   const code = document.createElement("code");
   code.textContent = initial;
   pre.appendChild(code);
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "code-copy";
+  copyBtn.textContent = "Copy";
+  let timer = 0;
+  copyBtn.addEventListener("click", () => {
+    const text = code.textContent ?? "";
+    navigator.clipboard?.writeText(text).catch(() => {});
+    copyBtn.textContent = "Copied";
+    copyBtn.dataset.copied = "true";
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      copyBtn.textContent = "Copy";
+      delete copyBtn.dataset.copied;
+    }, 1400);
+  });
+
+  wrap.append(pre, copyBtn);
   return {
-    pre,
+    wrap,
     set(text: string) {
       code.textContent = text;
     },
@@ -241,40 +296,77 @@ function mountApp(): void {
   const root = document.getElementById("app")!;
   document.documentElement.setAttribute("data-theme", "dark");
 
+  // Sticky Top Navigation Bar (reveals brand wordmark once hero scrolls out of view)
+  const topbar = document.createElement("header");
+  topbar.className = "topbar";
+  topbar.innerHTML = `
+    <div class="topbar-inner">
+      <a class="brand-link" href="#top" aria-label="TrueGlass">
+        <img class="brand-mark" src="/icon.png" alt="" width="26" height="26" draggable="false" />
+        <span class="brand-name">TrueGlass</span>
+      </a>
+      <nav class="topnav" aria-label="Primary sections">
+        <a href="#refraction">Refraction</a>
+        <a href="#optics-lab">Optics Lab</a>
+        <a href="#droplet-fusion">Droplet Fusion</a>
+        <a href="#components">Components</a>
+        <a href="#adaptive">Adaptive</a>
+      </nav>
+      <div class="topbar-actions">
+        <span class="version-tag">v1.0</span>
+        <a class="gh-link" href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">
+          ${GITHUB_SVG}<span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  `;
+  root.appendChild(topbar);
+
   const main = document.createElement("main");
   main.className = "standalone";
+  main.id = "top";
   root.appendChild(main);
 
-  // 1. 3D Specular Beveled SVG Glass Header
+  // 1. Hero Header + Spec Strip
+  const heroBlock = document.createElement("div");
+  heroBlock.className = "hero-block";
+
   const titleHeading = document.createElement("h1");
   titleHeading.className = "title-wrap";
   titleHeading.innerHTML = `
     <svg class="title-glass" aria-hidden="true" focusable="false">
       <defs>
         <text id="trueglass-title-lettering" x="0" y="1">TrueGlass</text>
-        <linearGradient id="trueglass-title-face" x1="0" y1="0" x2="0.7" y2="1">
-          <stop stop-color="#edf5ff" stop-opacity="0.78"/>
-          <stop offset="0.32" stop-color="#c4d1e3" stop-opacity="0.44"/>
-          <stop offset="0.62" stop-color="#a6b5ce" stop-opacity="0.28"/>
-          <stop offset="1" stop-color="#e3efff" stop-opacity="0.68"/>
+        <linearGradient id="trueglass-title-face" x1="0" y1="0" x2="0.4" y2="1">
+          <stop stop-color="#e8f4ff" stop-opacity="0.22"/>
+          <stop offset="0.38" stop-color="#9ec6f2" stop-opacity="0.06"/>
+          <stop offset="0.72" stop-color="#7fb4ec" stop-opacity="0.09"/>
+          <stop offset="1" stop-color="#cde8ff" stop-opacity="0.24"/>
         </linearGradient>
-        <linearGradient id="trueglass-title-rim" x1="0" y1="0" x2="0.6" y2="1">
-          <stop stop-color="#fff" stop-opacity="0.96"/>
-          <stop offset="0.3" stop-color="#dae6f6" stop-opacity="0.62"/>
-          <stop offset="0.55" stop-color="#9eafc7" stop-opacity="0.18"/>
-          <stop offset="0.78" stop-color="#e0ebfa" stop-opacity="0.42"/>
-          <stop offset="1" stop-color="#fff" stop-opacity="0.92"/>
+        <linearGradient id="trueglass-title-rim" x1="0" y1="0" x2="0.7" y2="1">
+          <stop stop-color="#ffffff" stop-opacity="0.96"/>
+          <stop offset="0.35" stop-color="#d8ecff" stop-opacity="0.48"/>
+          <stop offset="0.65" stop-color="#8ec7ff" stop-opacity="0.38"/>
+          <stop offset="1" stop-color="#e8f6ff" stop-opacity="0.88"/>
         </linearGradient>
-        <filter id="trueglass-title-bevel" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="0.75" result="surface"/>
-          <feSpecularLighting in="surface" surfaceScale="2.5" specularConstant="0.9" specularExponent="24" lighting-color="#f5f9ff" result="reflection">
-            <feDistantLight azimuth="225" elevation="45"/>
+        <filter id="trueglass-title-bevel" x="-12%" y="-24%" width="124%" height="156%" color-interpolation-filters="sRGB">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="dome"/>
+          <feSpecularLighting in="dome" surfaceScale="5.2" specularConstant="1.25" specularExponent="54" lighting-color="#ffffff" result="keySpec">
+            <feDistantLight azimuth="235" elevation="38"/>
           </feSpecularLighting>
-          <feComposite in="reflection" in2="SourceAlpha" operator="in" result="bevel"/>
-          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="bevel"/></feMerge>
+          <feSpecularLighting in="dome" surfaceScale="4.5" specularConstant="0.72" specularExponent="34" lighting-color="#8fd4ff" result="bounceSpec">
+            <feDistantLight azimuth="52" elevation="32"/>
+          </feSpecularLighting>
+          <feComposite in="keySpec" in2="SourceAlpha" operator="in" result="keyClip"/>
+          <feComposite in="bounceSpec" in2="SourceAlpha" operator="in" result="bounceClip"/>
+          <feMerge>
+            <feMergeNode in="SourceGraphic"/>
+            <feMergeNode in="bounceClip"/>
+            <feMergeNode in="keyClip"/>
+          </feMerge>
         </filter>
         <filter id="trueglass-title-edge" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
-          <feMorphology in="SourceAlpha" operator="erode" radius="0.55" result="interior"/>
+          <feMorphology in="SourceAlpha" operator="erode" radius="0.85" result="interior"/>
           <feComposite in="SourceAlpha" in2="interior" operator="out" result="rim"/>
           <feComposite in="SourceGraphic" in2="rim" operator="in"/>
         </filter>
@@ -287,19 +379,40 @@ function mountApp(): void {
   const intro = document.createElement("p");
   intro.className = "intro";
   intro.textContent =
-    "Zero-dependency TypeScript implementation of physically-based TrueGlass for the web — combining stand-in lens refraction, Snell’s law squircle bezels, chromatic dispersion, live tilt lighting, Clear ↔ Tinted continuum, Materialize-by-Bending, and adaptive luminance sensing.";
+    "Zero-dependency TypeScript optical glass engine and UI suite — real-time Snell’s law squircle bezels, RGB chromatic dispersion, GPU tilt lighting, Clear ↔ Tinted continuum, C² droplet fusion, and adaptive luminance sensing.";
 
-  const linksRow = document.createElement("div");
-  linksRow.className = "links-row";
-  linksRow.innerHTML = `
-    <span class="chip"><strong>~22.3 KiB</strong> gzipped Core Engine</span>
-    <span class="chip">Runtime Deps: <strong>0</strong></span>
-    <span class="chip">Pipeline: <strong>Snell Bezel + WebGL2 + sRGB SVG</strong></span>
+  const specStrip = document.createElement("div");
+  specStrip.className = "spec-strip";
+  specStrip.innerHTML = `
+    <span class="spec-item"><strong>~22.3 KiB</strong> gzipped core</span>
+    <span class="spec-sep" aria-hidden="true"></span>
+    <span class="spec-item"><strong>0</strong> runtime dependencies</span>
+    <span class="spec-sep" aria-hidden="true"></span>
+    <span class="spec-item"><strong>Snell Bezel + WebGL2 + sRGB SVG</strong> pipeline</span>
+    <span class="spec-sep" aria-hidden="true"></span>
+    <span class="spec-item"><strong>MIT</strong> licensed</span>
   `;
 
-  main.append(titleHeading, intro, linksRow);
+  heroBlock.append(titleHeading, intro, specStrip);
+  main.appendChild(heroBlock);
 
-  // 2. Refraction: 2D Pannable Fluid Wave Stage
+  const titleTextEl = titleHeading.querySelector<HTMLElement>(".title-text");
+  if (titleTextEl) {
+    mountGlassTitle(titleHeading, titleTextEl, "TrueGlass");
+  }
+
+  if (typeof IntersectionObserver !== "undefined") {
+    const heroObserver = new IntersectionObserver(
+      (entries) => {
+        const visible = entries[0]?.isIntersecting ?? true;
+        topbar.toggleAttribute("data-scrolled", !visible);
+      },
+      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
+    );
+    heroObserver.observe(titleHeading);
+  }
+
+  // 2. Hero Interactive Refraction Stage
   let stageScheme: "light" | "dark" = "dark";
   const stageEl = document.createElement("div");
   stageEl.className = "stage";
@@ -315,12 +428,15 @@ function mountApp(): void {
   imgLight.src = "/img/fluid-light.webp";
   imgLight.alt = "";
   imgLight.draggable = false;
+  imgLight.decoding = "async";
 
   const imgDark = document.createElement("img");
   imgDark.className = "wallpaper-dark";
   imgDark.src = "/img/fluid-dark.webp";
   imgDark.alt = "";
   imgDark.draggable = false;
+  imgDark.loading = "eager";
+  imgDark.setAttribute("fetchpriority", "high");
   wallpapers.append(imgLight, imgDark);
   scroller.appendChild(wallpapers);
 
@@ -332,7 +448,7 @@ function mountApp(): void {
     refitAllGlass();
   };
   imgLight.addEventListener("load", centerScrollerIfNeeded);
-  imgDark.addEventListener("load", () => refitAllGlass());
+  imgDark.addEventListener("load", centerScrollerIfNeeded);
 
   const stageOverlay = document.createElement("div");
   stageOverlay.className = "overlay";
@@ -368,9 +484,13 @@ function mountApp(): void {
     },
   });
   stageThemeCtrl.append(sunSpan, themeSwitch.element, moonSpan);
-  stageEl.append(scroller, stageOverlay, stageThemeCtrl);
 
-  // Panning physics for the interactive backdrop viewport
+  const stageHint = document.createElement("div");
+  stageHint.className = "stage-hint";
+  stageHint.textContent = "Drag backdrop · Hold tabs, slider, or switch to lift";
+
+  stageEl.append(scroller, stageOverlay, stageThemeCtrl, stageHint);
+
   requestAnimationFrame(() => {
     scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) * 0.325;
     scroller.scrollTop = scroller.scrollHeight * 0.3;
@@ -395,12 +515,13 @@ function mountApp(): void {
   scroller.addEventListener("pointerup", endPan);
   scroller.addEventListener("pointercancel", endPan);
 
-  const stageCaption = document.createElement("p");
-  stageCaption.className = "caption";
-  stageCaption.textContent = "Drag the Fluid silk-wave wallpaper under the glass, or hold the tabs, slider or switch to lift them into lenses.";
-  main.appendChild(section("Refraction (2D Interactive Fluid Stage)", stageEl, stageCaption));
+  const heroStageSection = document.createElement("section");
+  heroStageSection.className = "section hero-section";
+  heroStageSection.id = "refraction";
+  heroStageSection.appendChild(stageEl);
+  main.appendChild(heroStageSection);
 
-  // 3. Interactive Glass Magnifier (Magnifier + Clear<->Tinted + Tilt)
+  // 3. Optics Lab: 2-Column Magnifier + Live Parameters Console
   const magnifierBox = document.createElement("div");
   magnifierBox.className = "magnifier";
 
@@ -412,6 +533,7 @@ function mountApp(): void {
   magImg.src = "/img/fluid-magnifier.webp";
   magImg.alt = "";
   magImg.draggable = false;
+  magImg.decoding = "async";
 
   const magText = document.createElement("p");
   magText.className = "magnifier-text";
@@ -426,7 +548,6 @@ function mountApp(): void {
   lensGlass.element.style.setProperty("--lg-rim-shine", "0.13");
   magnifierBox.append(magScene, lensGlass.element);
 
-  // 4-substep velocity deformation spring physics for the draggable pill
   let magPos = { x: 240, y: 180 };
   let magPrev = { ...magPos };
   const magVel = { x: 0, y: 0 };
@@ -479,19 +600,16 @@ function mountApp(): void {
     }
   };
 
-  requestAnimationFrame(() => {
-    if (magnifierBox.clientWidth > 0) {
-      magPos = { x: magnifierBox.clientWidth * 0.5, y: magnifierBox.clientHeight * 0.5 };
-      magPrev = { ...magPos };
-    }
-    paintMag();
-  });
-  magImg.addEventListener("load", () => {
-    if (magnifierBox.clientWidth > 0) {
+  const recenterMag = () => {
+    if (magnifierBox.clientWidth > 0 && magnifierBox.clientHeight > 0) {
       magPos = { x: magnifierBox.clientWidth * 0.5, y: magnifierBox.clientHeight * 0.5 };
       magPrev = { ...magPos };
       paintMag();
     }
+  };
+  requestAnimationFrame(recenterMag);
+  magImg.addEventListener("load", () => {
+    recenterMag();
     lensGlass.refit();
     refitAllGlass();
   });
@@ -520,7 +638,19 @@ function mountApp(): void {
   lensGlass.element.addEventListener("pointerup", releaseMag);
   lensGlass.element.addEventListener("pointercancel", releaseMag);
 
-  // Settings Sliders below Magnifier
+  const opticsPanel = document.createElement("div");
+  opticsPanel.className = "studio-panel";
+
+  const opticsHead = document.createElement("div");
+  opticsHead.className = "panel-head";
+  const opticsTitleWrap = document.createElement("div");
+  opticsTitleWrap.innerHTML = `<h3 class="panel-title">Optical Parameters</h3><p class="panel-sub">Real-time Snell refraction &amp; GPU rim lighting</p>`;
+  const resetOpticsBtn = document.createElement("button");
+  resetOpticsBtn.type = "button";
+  resetOpticsBtn.className = "reset-btn";
+  resetOpticsBtn.textContent = "Reset";
+  opticsHead.append(opticsTitleWrap, resetOpticsBtn);
+
   const settingsWrap = document.createElement("div");
   settingsWrap.className = "settings";
   let stopVirtualTilt: (() => void) | null = null;
@@ -543,7 +673,15 @@ function mountApp(): void {
     }
   };
 
+  const addGroupLabel = (parent: HTMLElement, text: string) => {
+    const lbl = document.createElement("div");
+    lbl.className = "panel-group-label";
+    lbl.textContent = text;
+    parent.appendChild(lbl);
+  };
+
   const addOpticalSlider = (
+    parent: HTMLElement,
     label: string,
     min: number,
     max: number,
@@ -557,7 +695,7 @@ function mountApp(): void {
     const nameEl = document.createElement("span");
     nameEl.textContent = label;
     const valEl = document.createElement("span");
-    valEl.textContent = `${initial}${unit}`;
+    valEl.textContent = `${Number.isInteger(step) ? initial : initial.toFixed(2)}${unit}`;
     const sl = createSlider({
       ariaLabel: label,
       min,
@@ -570,23 +708,34 @@ function mountApp(): void {
       },
     });
     row.append(nameEl, sl.element, valEl);
-    settingsWrap.appendChild(row);
-    return { sl, valEl };
+    parent.appendChild(row);
+    return {
+      sl,
+      valEl,
+      reset() {
+        sl.setValue(initial);
+        valEl.textContent = `${Number.isInteger(step) ? initial : initial.toFixed(2)}${unit}`;
+        onChange(initial);
+      },
+    };
   };
 
-  addOpticalSlider("Bend", 0, 1, 0.01, 0.45, "", (v) => {
+  addGroupLabel(settingsWrap, "Refraction");
+  const bendCtrl = addOpticalSlider(settingsWrap, "Bend", 0, 1, 0.01, 0.45, "", (v) => {
     lensGlass.element.style.setProperty("--lg-glass-bend", String(v));
     lensGlass.refit();
   });
-  addOpticalSlider("Dispersion", 0, 2, 0.05, 0.4, "", (v) => {
+  const dispCtrl = addOpticalSlider(settingsWrap, "Dispersion", 0, 2, 0.05, 0.4, "", (v) => {
     lensGlass.element.style.setProperty("--lg-glass-dispersion", String(v));
     lensGlass.refit();
   });
-  addOpticalSlider("Frost", 0, 12, 0.5, 0, "px", (v) => {
+  const frostCtrl = addOpticalSlider(settingsWrap, "Frost", 0, 12, 0.5, 0, "px", (v) => {
     lensGlass.element.style.setProperty("--lg-blur", `${v}px`);
     lensGlass.refit();
   });
-  addOpticalSlider("Rim", 0, 1, 0.01, 0.13, "", (v) => {
+
+  addGroupLabel(settingsWrap, "Surface & Lighting");
+  const rimCtrl = addOpticalSlider(settingsWrap, "Rim", 0, 1, 0.01, 0.13, "", (v) => {
     lensGlass.element.style.setProperty("--lg-rim-shine", String(v));
     if (document.documentElement.hasAttribute("data-dynamic-light")) return;
     if (!rimRaf) {
@@ -596,12 +745,11 @@ function mountApp(): void {
       });
     }
   });
-  addOpticalSlider("Clear ↔ Tinted", 0, 1, 0.01, 0, "", (v) => {
+  const tintCtrl = addOpticalSlider(settingsWrap, "Clear ↔ Tinted", 0, 1, 0.01, 0, "", (v) => {
     document.documentElement.style.setProperty("--lg-tint-amount", String(v));
     lensGlass.element.style.backgroundColor = v > 0 ? `rgb(255 255 255 / ${(v * 0.28).toFixed(2)})` : "";
   });
-
-  const tiltCtrl = addOpticalSlider("Light Tilt", -180, 180, 1, -135, "°", (v) => {
+  const tiltCtrl = addOpticalSlider(settingsWrap, "Light Tilt", -180, 180, 1, -135, "°", (v) => {
     if (stopVirtualTilt) {
       stopVirtualTilt();
       stopVirtualTilt = null;
@@ -648,61 +796,63 @@ function mountApp(): void {
   tiltModeRow.append(tiltModeLabel, tiltModeSwitch.element, tiltModeState);
   settingsWrap.appendChild(tiltModeRow);
 
-  main.appendChild(section("Glass Magnifier & Optical Controls", magnifierBox, settingsWrap));
+  resetOpticsBtn.addEventListener("click", () => {
+    stopVirtualTilt?.();
+    stopVirtualTilt = null;
+    tiltModeSwitch.setChecked(false);
+    tiltModeState.textContent = "Off";
+    bendCtrl.reset();
+    dispCtrl.reset();
+    frostCtrl.reset();
+    rimCtrl.reset();
+    tintCtrl.reset();
+    tiltCtrl.reset();
+    recenterMag();
+  });
 
-  // 3b. Shared Glass Container (C2 sminCubic Droplet Fusion & Cross-Sibling Light Bleed)
+  opticsPanel.append(opticsHead, settingsWrap);
+
+  const opticsWorkbench = document.createElement("div");
+  opticsWorkbench.className = "workbench";
+  opticsWorkbench.append(magnifierBox, opticsPanel);
+
+  main.appendChild(
+    studioSection(
+      "optics-lab",
+      "Glass Magnifier & Optical Lab",
+      "Drag the lens across the typography to feel velocity-coupled spring deformation and inspect refraction, dispersion, frost, and dynamic rim lighting side-by-side.",
+      opticsWorkbench,
+    ),
+  );
+
+  // 4. Shared Glass Container (C2 sminCubic Droplet Fusion)
+  const dropletPanel = document.createElement("div");
+  dropletPanel.className = "studio-panel";
+  const dropletHead = document.createElement("div");
+  dropletHead.className = "panel-head";
+  dropletHead.innerHTML = `<div><h3 class="panel-title">Fusion Bridge Parameters</h3><p class="panel-sub">Single WebGL2 pass · C² cubic smooth-min (sminCubic)</p></div>`;
+
   const dropletSettings = document.createElement("div");
   dropletSettings.className = "settings";
 
-  const addDropletSlider = (
-    label: string,
-    min: number,
-    max: number,
-    step: number,
-    initial: number,
-    unit: string,
-    onChange: (v: number) => void,
-  ) => {
-    const row = document.createElement("label");
-    row.className = "setting";
-    const nameEl = document.createElement("span");
-    nameEl.textContent = label;
-    const valEl = document.createElement("span");
-    valEl.textContent = `${initial}${unit}`;
-    const sl = createSlider({
-      ariaLabel: label,
-      min,
-      max,
-      step,
-      value: initial,
-      onInput: (v) => {
-        valEl.textContent = `${v}${unit}`;
-        onChange(v);
-      },
-    });
-    row.append(nameEl, sl.element, valEl);
-    dropletSettings.appendChild(row);
-    return { sl, valEl };
-  };
-
-  let gapCtrl!: { sl: ReturnType<typeof createSlider>; valEl: HTMLSpanElement };
+  let gapCtrl!: ReturnType<typeof addOpticalSlider>;
   const dropletContainer = createGlassContainer({
     childrenVariants: ["regular", "regular"],
     backdropSrc: "/img/fluid-dark.webp",
     gap: 8,
     smoothK: 34,
     tint: 0.08,
-    ariaLabel: "Shared Fluid Glass Droplet Container",
+    ariaLabel: "Shared TrueGlass Droplet Container",
     onGapChange(g) {
       gapCtrl.sl.setValue(g);
       gapCtrl.valEl.textContent = `${g}px`;
     },
   });
 
-  gapCtrl = addDropletSlider("Droplet Gap", -16, 64, 1, 8, "px", (v) => {
+  gapCtrl = addOpticalSlider(dropletSettings, "Droplet Gap", -16, 64, 1, 8, "px", (v) => {
     dropletContainer.setGap(v);
   });
-  const smoothKCtrl = addDropletSlider("Fusion Bridge k", 0, 56, 1, 34, "px", (v) => {
+  const smoothKCtrl = addOpticalSlider(dropletSettings, "Fusion Bridge k", 0, 56, 1, 34, "px", (v) => {
     dropletContainer.setSmoothK(v);
   });
 
@@ -723,19 +873,24 @@ function mountApp(): void {
   const dropletCaption = document.createElement("p");
   dropletCaption.className = "caption";
   dropletCaption.textContent =
-    "One shared backdrop pass evaluates both controls via C2 cubic smooth-min (sminCubic). Drag the Search orb horizontally or press either pill to see chromatic neck bending and cross-sibling touch glow.";
+    "Drag the Search orb horizontally or press either pill to observe chromatic neck bending and cross-sibling Gaussian touch glow.";
+
+  dropletPanel.append(dropletHead, dropletSettings, dropletPresets, dropletCaption);
+
+  const dropletWorkbench = document.createElement("div");
+  dropletWorkbench.className = "workbench";
+  dropletWorkbench.append(dropletContainer.element, dropletPanel);
 
   main.appendChild(
-    section(
-      "Shared Glass Container (Droplet Fusion & Light Bleed)",
-      dropletContainer.element,
-      dropletSettings,
-      dropletPresets,
-      dropletCaption,
+    studioSection(
+      "droplet-fusion",
+      "Shared Glass Container",
+      "Unites adjacent controls inside one shared backdrop pass so approaching pills fuse via continuous C² liquid bridges.",
+      dropletWorkbench,
     ),
   );
 
-  // 4. Button Section (with Material Variants + Materialize by Bending)
+  // 5. UI Component Suite (Full-width Button + 2-Column Bento Grid + Concentric Accessibility)
   const btnStage = document.createElement("div");
   btnStage.className = "btn-stage";
   btnStage.setAttribute("data-theme", "dark");
@@ -745,6 +900,7 @@ function mountApp(): void {
   btnBackdrop.src = "/img/fluid-dark.webp";
   btnBackdrop.alt = "";
   btnBackdrop.draggable = false;
+  btnBackdrop.decoding = "async";
   btnBackdrop.setAttribute("data-fluid-backdrop", "");
 
   const btnDemo = document.createElement("div");
@@ -759,13 +915,22 @@ function mountApp(): void {
   const textBtnSlot = document.createElement("span");
   let btnIconHandle = createButton({ iconHtml: iconSvg(ICON_PATHS.share), iconOnly: true, ariaLabel: "Share" });
   let btnTextHandle = createButton({ label: "Continue" });
+  const matTrigger = createButton({
+    label: "Materialize",
+    variant: "glass",
+    onClick: () => {
+      btnIconHandle.materialize(false);
+      btnTextHandle.materialize(false);
+    },
+  });
   iconBtnSlot.appendChild(btnIconHandle.element);
   textBtnSlot.appendChild(btnTextHandle.element);
-  btnDemo.append(iconBtnSlot, textBtnSlot);
+  btnDemo.append(iconBtnSlot, textBtnSlot, matTrigger.element);
   btnStage.append(btnBackdrop, btnDemo);
   btnBackdrop.addEventListener("load", () => {
     btnIconHandle.refit();
     btnTextHandle.refit();
+    matTrigger.refit();
   });
 
   const btnCode = codeBlock(`<Button icon={<ShareIcon />} aria-label="Share" />\n<Button>Continue</Button>`);
@@ -838,19 +1003,18 @@ function mountApp(): void {
     },
   );
 
-  main.appendChild(
-    section(
-      "Button",
-      btnStage,
-      optionPills(["Glass", "Filled", "Tinted", "Tinted filled", "Destructive", "Destructive filled"], "Glass", rebuildButtons),
-      materialPills,
-      btnCode.pre,
-    ),
+  const buttonCard = studioCard(
+    "Button",
+    "Rubber-band spring press, optical variants & materialize-by-bending",
+    btnStage,
+    optionPills(["Glass", "Filled", "Tinted", "Tinted filled", "Destructive", "Destructive filled"], "Glass", rebuildButtons),
+    materialPills,
+    btnCode.wrap,
   );
 
-  // 5. Tab bar
-  const tabDemo = document.createElement("div");
-  tabDemo.className = "demo";
+  // Tab bar card
+  const tabWell = document.createElement("div");
+  tabWell.className = "demo-well";
   const tabCode = codeBlock();
   let curTab = "radio";
   let curLift = 16;
@@ -870,12 +1034,15 @@ function mountApp(): void {
     updateTabCode();
   };
   const updateTabCode = () => {
-    tabCode.set(`<TabBar aria-label="Library" value="${curTab}"${curLift === 16 ? "" : ` style={{ "--lg-lens-grow-x": "${Math.round(1.5 * curLift)}px", "--lg-lens-grow-y": "${curLift}px" }}`} />`);
+    tabCode.set(
+      `<TabBar aria-label="Library" value="${curTab}"${curLift === 16 ? "" : ` style={{ "--lg-lens-grow-x": "${Math.round(1.5 * curLift)}px", "--lg-lens-grow-y": "${curLift}px" }}`} />`,
+    );
   };
   applyLift(16);
-  tabDemo.appendChild(demoTabs.element);
+  tabWell.appendChild(demoTabs.element);
   const liftRow = document.createElement("label");
   liftRow.className = "setting";
+  liftRow.style.marginTop = "10px";
   const liftVal = document.createElement("span");
   liftVal.textContent = "16px";
   const liftSlider = createSlider({
@@ -890,11 +1057,11 @@ function mountApp(): void {
     },
   });
   liftRow.append(Object.assign(document.createElement("span"), { textContent: "Lift" }), liftSlider.element, liftVal);
-  main.appendChild(section("Tab bar", tabDemo, liftRow, tabCode.pre));
+  const tabCard = studioCard("Tab bar", "Snell meniscus lift & dispersion", tabWell, liftRow, tabCode.wrap);
 
-  // 6. Segmented control
-  const segDemo = document.createElement("div");
-  segDemo.className = "demo";
+  // Segmented control card
+  const segWell = document.createElement("div");
+  segWell.className = "demo-well";
   const segCode = codeBlock('<SegmentedControl aria-label="Range" value="week" />');
   const seg = createSegmentedControl({
     ariaLabel: "Range",
@@ -906,12 +1073,12 @@ function mountApp(): void {
     ],
     onChange: (v) => segCode.set(`<SegmentedControl aria-label="Range" value="${v}" />`),
   });
-  segDemo.appendChild(seg.element);
-  main.appendChild(section("Segmented control", segDemo, segCode.pre));
+  segWell.appendChild(seg.element);
+  const segCard = studioCard("Segmented control", "Synchronized 3-layer ink lens", segWell, segCode.wrap);
 
-  // 7. Menu (morphing trigger-to-card + scrubbing)
-  const menuDemo = document.createElement("div");
-  menuDemo.className = "demo";
+  // Menu card
+  const menuWell = document.createElement("div");
+  menuWell.className = "demo-well";
   const menuCode = codeBlock('<Menu aria-label="Options" items={[...]} />');
   const demoMenu = createMenu({
     ariaLabel: "Options",
@@ -924,52 +1091,53 @@ function mountApp(): void {
       { label: "Delete", iconHtml: iconSvg(ICON_PATHS.trash), destructive: true, onSelect: () => menuCode.set('<Menu aria-label="Options" /> // chose Delete') },
     ],
   });
-  menuDemo.appendChild(demoMenu.element);
-  main.appendChild(section("Menu", menuDemo, menuCode.pre));
+  menuWell.appendChild(demoMenu.element);
+  const menuCard = studioCard("Menu", "Clip-path morph & magnetic scrub", menuWell, menuCode.wrap);
 
-  // 8. Input
-  const inputDemo = document.createElement("div");
-  inputDemo.className = "demo";
+  // Input card
+  const inputWell = document.createElement("div");
+  inputWell.className = "demo-well";
   const demoSearch = createSearchField({ placeholder: "Search", ariaLabel: "Search" });
-  inputDemo.appendChild(demoSearch.element);
-  main.appendChild(
-    section(
-      "Input",
-      inputDemo,
-      optionPills(["Default", "Disabled"], "Default", (opt) => demoSearch.setDisabled(opt === "Disabled")),
-    ),
+  inputWell.appendChild(demoSearch.element);
+  const inputCard = studioCard(
+    "Search & Input",
+    "Capsule glass field with animated clear",
+    inputWell,
+    optionPills(["Default", "Disabled"], "Default", (opt) => demoSearch.setDisabled(opt === "Disabled")),
   );
 
-  // 9. Slider
-  const sliderDemo = document.createElement("div");
-  sliderDemo.className = "demo";
+  // Slider card
+  const sliderWell = document.createElement("div");
+  sliderWell.className = "demo-well";
   const demoSlider = createSlider({ ariaLabel: "Volume", value: 40, className: "demo-slider" });
-  sliderDemo.appendChild(demoSlider.element);
-  main.appendChild(
-    section(
-      "Slider",
-      sliderDemo,
-      optionPills(["Continuous", "Stepped", "Disabled"], "Continuous", (opt) => {
-        demoSlider.setDisabled(opt === "Disabled");
-        demoSlider.setStep(opt === "Stepped" ? 10 : 1);
-      }),
-    ),
+  sliderWell.appendChild(demoSlider.element);
+  const sliderCard = studioCard(
+    "Slider",
+    "Lifted magnifying thumb lens",
+    sliderWell,
+    optionPills(["Continuous", "Stepped", "Disabled"], "Continuous", (opt) => {
+      demoSlider.setDisabled(opt === "Disabled");
+      demoSlider.setStep(opt === "Stepped" ? 10 : 1);
+    }),
   );
 
-  // 10. Switch
-  const switchDemo = document.createElement("div");
-  switchDemo.className = "demo";
+  // Switch card
+  const switchWell = document.createElement("div");
+  switchWell.className = "demo-well";
   const demoSwitch = createSwitch({ ariaLabel: "Wi-Fi", checked: true });
-  switchDemo.appendChild(demoSwitch.element);
-  main.appendChild(
-    section(
-      "Switch",
-      switchDemo,
-      optionPills(["Default", "Disabled"], "Default", (opt) => demoSwitch.setDisabled(opt === "Disabled")),
-    ),
+  switchWell.appendChild(demoSwitch.element);
+  const switchCard = studioCard(
+    "Switch",
+    "Dual-bed stand-in refraction & scrub",
+    switchWell,
+    optionPills(["Default", "Disabled"], "Default", (opt) => demoSwitch.setDisabled(opt === "Disabled")),
   );
 
-  // 10b. Hardware Concentricity & Accessibility Fallbacks
+  const componentGrid = document.createElement("div");
+  componentGrid.className = "component-grid";
+  componentGrid.append(tabCard, segCard, menuCard, inputCard, sliderCard, switchCard);
+
+  // Concentric Squircle Architecture & Accessibility Card
   const concentricStage = document.createElement("div");
   concentricStage.className = "concentric-stage";
   concentricStage.setAttribute("data-theme", "dark");
@@ -977,6 +1145,7 @@ function mountApp(): void {
   concentricBg.className = "concentric-backdrop";
   concentricBg.src = "/img/fluid-dark.webp";
   concentricBg.alt = "";
+  concentricBg.decoding = "async";
   concentricBg.setAttribute("data-fluid-backdrop", "");
 
   const rOuter = 28;
@@ -1019,16 +1188,27 @@ function mountApp(): void {
   concentricCaption.textContent =
     "Nested squircles follow concentricRadius(outer, pad) = max(0, outer - pad). Inner surfaces use flat vibrant fills (never glass-on-glass); explicit accessibility toggles drive data-a11y-* overrides.";
 
+  const concentricCard = studioCard(
+    "Concentric Squircle Architecture & Accessibility",
+    "Hardware-matched nested radii & opt-in a11y overrides",
+    concentricStage,
+    concentricPills,
+    concentricCaption,
+  );
+  concentricCard.style.marginTop = "20px";
+
   main.appendChild(
-    section(
-      "Concentric Squircle Architecture & Accessibility",
-      concentricStage,
-      concentricPills,
-      concentricCaption,
+    studioSection(
+      "components",
+      "UI Component Suite",
+      "Accessible, zero-dependency controls with closed-form harmonic springs, tactile rubber-banding, and physical glass optics.",
+      buttonCard,
+      componentGrid,
+      concentricCard,
     ),
   );
 
-  // 11. Adaptive Luminance Sensor, Scroll Choreography, Snell Ray-Tracer & Kernel Benchmark
+  // 6. Adaptive Luminance Sensor (2-Column Workbench)
   const sunsetStage = document.createElement("div");
   sunsetStage.className = "sunset-stage";
   sunsetStage.setAttribute("data-theme", "light");
@@ -1042,7 +1222,8 @@ function mountApp(): void {
   sunsetCanvas.className = "sunset-canvas";
   sunsetContent.appendChild(sunsetCanvas);
   sunsetScroller.appendChild(sunsetContent);
-  paintSunsetNightCanvas(sunsetCanvas, "sunset-night");
+  let currentScene: "sunset-night" | "white-text" = "sunset-night";
+  paintSunsetNightCanvas(sunsetCanvas, currentScene);
 
   const sunsetScrollEdge = document.createElement("div");
   sunsetScrollEdge.className = "sunset-scroll-edge";
@@ -1082,6 +1263,7 @@ function mountApp(): void {
   sunsetHud.appendChild(sunsetNavRow);
   sunsetStage.append(sunsetScroller, sunsetScrollEdge, telBar, sunsetHud);
 
+  // Event-driven adaptive sensor (intervalMs: 0 -> zero background polling CPU)
   const adaptiveSensor = attachAdaptiveBackdropSensor(
     sunsetStage,
     () => {
@@ -1093,7 +1275,7 @@ function mountApp(): void {
       return analyzeBackdropPixels(ctx.getImageData(220, sy, 320, 24).data, 320, 24);
     },
     {
-      intervalMs: 120,
+      intervalMs: 0,
       surfaceSize: "small",
       onSample(s: BackdropSample) {
         telPill.element.textContent = `Y=${s.luminance.toFixed(2)} | σ=${s.contrastVariance.toFixed(2)} | Shadow=${s.adaptiveShadowAlpha.toFixed(2)} | ${s.recommendedTheme.toUpperCase()}`;
@@ -1118,44 +1300,78 @@ function mountApp(): void {
   );
   requestAnimationFrame(() => adaptiveSensor.update());
 
-  let currentScene: "sunset-night" | "white-text" = "sunset-night";
+  // Repaint canvas text in crisp Inter once web fonts finish loading
+  document.fonts?.ready.then(() => {
+    paintSunsetNightCanvas(sunsetCanvas, currentScene);
+    adaptiveSensor.update();
+  });
+
+  const sensorPanel = document.createElement("div");
+  sensorPanel.className = "studio-panel";
+  const sensorHead = document.createElement("div");
+  sensorHead.className = "panel-head";
+  sensorHead.innerHTML = `<div><h3 class="panel-title">Backdrop Sensor Modes</h3><p class="panel-sub">Hysteresis polarity switching &amp; contrast-driven shadows</p></div>`;
+
+  addGroupLabel(sensorPanel, "Backdrop Scene");
+  const scenePills = optionPills(["Sunset → Night", "Text ↔ Plain White"], "Sunset → Night", (m) => {
+    currentScene = m === "Sunset → Night" ? "sunset-night" : "white-text";
+    paintSunsetNightCanvas(sunsetCanvas, currentScene);
+    sunsetScroller.scrollTop = 0;
+    sunsetHud.dataset.minimized = "false";
+    adaptiveSensor.update();
+  });
+
+  const edgeLbl = document.createElement("div");
+  edgeLbl.className = "panel-group-label";
+  edgeLbl.textContent = "Scroll Edge Treatment";
+  const edgePills = optionPills(["No Scroll Edge", "Soft Scroll Edge", "Hard Scroll Edge"], "No Scroll Edge", (m) => {
+    sunsetStage.setAttribute("data-scroll-edge", m === "Soft Scroll Edge" ? "soft" : m === "Hard Scroll Edge" ? "hard" : "none");
+  });
+
+  const surfLbl = document.createElement("div");
+  surfLbl.className = "panel-group-label";
+  surfLbl.textContent = "Surface Size Behavior";
+  const surfPills = optionPills(
+    ["Small Bar (Auto-Flip Polarity)", "Large Panel (Stable Polarity + Ambient Spill)"],
+    "Small Bar (Auto-Flip Polarity)",
+    (m) => {
+      const isLarge = m.startsWith("Large");
+      sunsetStage.setAttribute("data-surface-size", isLarge ? "large" : "small");
+      adaptiveSensor.setSurfaceSize(isLarge ? "large" : "small");
+    },
+  );
+
+  const sensorCaption = document.createElement("p");
+  sensorCaption.className = "caption";
+  sensorCaption.textContent =
+    "Scroll inside the viewport to watch perceptual luminance (Y) and spatial edge variance (σ) flip light/dark polarity with hysteresis and adapt grounding shadows.";
+
+  sensorPanel.prepend(sensorHead);
+  sensorPanel.append(scenePills, edgeLbl, edgePills, surfLbl, surfPills, sensorCaption);
+
+  const sensorWorkbench = document.createElement("div");
+  sensorWorkbench.className = "workbench";
+  sensorWorkbench.append(sunsetStage, sensorPanel);
+
   main.appendChild(
-    section(
+    studioSection(
+      "adaptive",
       "Adaptive Luminance Sensor",
-      sunsetStage,
-      optionPills(["Sunset → Night", "Text ↔ Plain White", "No Scroll Edge", "Soft Scroll Edge", "Hard Scroll Edge"], "Sunset → Night", (m) => {
-        if (m === "No Scroll Edge") {
-          sunsetStage.setAttribute("data-scroll-edge", "none");
-          return;
-        }
-        if (m === "Soft Scroll Edge") {
-          sunsetStage.setAttribute("data-scroll-edge", "soft");
-          return;
-        }
-        if (m === "Hard Scroll Edge") {
-          sunsetStage.setAttribute("data-scroll-edge", "hard");
-          return;
-        }
-        currentScene = m === "Sunset → Night" ? "sunset-night" : "white-text";
-        paintSunsetNightCanvas(sunsetCanvas, currentScene);
-        sunsetScroller.scrollTop = 0;
-        sunsetHud.dataset.minimized = "false";
-        adaptiveSensor.update();
-      }),
-      optionPills(
-        ["Small Bar (Auto-Flip Polarity)", "Large Panel (Stable Polarity + Ambient Spill)"],
-        "Small Bar (Auto-Flip Polarity)",
-        (m) => {
-          const isLarge = m.startsWith("Large");
-          sunsetStage.setAttribute("data-surface-size", isLarge ? "large" : "small");
-          adaptiveSensor.setSurfaceSize(isLarge ? "large" : "small");
-        },
-      ),
+      "Samples underlying scene luminance, spatial contrast variance, and ambient chroma to maintain crisp legibility over arbitrary content.",
+      sensorWorkbench,
     ),
   );
 
+  // Footer
+  const footer = document.createElement("footer");
+  footer.className = "site-footer";
+  footer.innerHTML = `
+    <span>TrueGlass — Physically-based optical glass engine &amp; UI suite</span>
+    <span><a href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">github.com/kicode01/trueglass</a> · MIT License</span>
+  `;
+  main.appendChild(footer);
+
   requestAnimationFrame(() => refitAllGlass());
-  void stageEl;
   void createInput;
 }
 

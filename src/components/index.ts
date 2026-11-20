@@ -495,9 +495,9 @@ export function createSlider(options: SliderOptions): SliderHandle {
 
 /** 5 & 6. Shared TabBar & SegmentedControl with 3-layer synchronized ink refraction + chromatic dispersion. */
 const TAB_LENS: LensOptions = {
-  strength: 1.15,
+  strength: 0.85,
   strengthProperty: "--lg-tab-bend",
-  dispersion: 2.4,
+  dispersion: 1.4,
   dispersionProperty: "--lg-tab-dispersion",
   depth: 0.24,
   maxDepth: 13,
@@ -510,9 +510,9 @@ const TAB_LENS: LensOptions = {
 };
 
 const TAB_BACKDROP_LENS: LensOptions = {
-  strength: 1.85,
+  strength: 1.35,
   strengthProperty: "--lg-tab-bend",
-  dispersion: 2.2,
+  dispersion: 1.3,
   dispersionProperty: "--lg-tab-dispersion",
   depth: 0.28,
   maxDepth: 16,
