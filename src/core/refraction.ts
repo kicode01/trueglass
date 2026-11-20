@@ -397,20 +397,20 @@ function selectionMaps(width: number, height: number, radius: number) {
       shine.data[i] = shine.data[i + 1] = shine.data[i + 2] = 255;
 
       let alpha = 0;
-      if (dist >= -half && dist < 3.0) {
+      if (dist >= -half && dist < 3.2) {
         const cover = clamp((dist + half) * density, 0, 1);
-        const bands = [0.42, 0.62, 0.82].map((centre) => Math.exp(-(((dist - centre) / 0.45) ** 2)));
+        const bands = [0.38, 0.58, 0.78].map((centre) => Math.exp(-(((dist - centre) / 0.42) ** 2)));
         const peak = Math.max(...bands);
-        alpha = cover * peak * (0.08 + 0.72 * glint + 0.34 * reflected) * 0.85;
+        alpha = cover * peak * (0.22 + 0.85 * glint + 0.48 * reflected) * 0.92;
         for (let channel = 0; channel < 3; channel++) {
-          shine.data[i + channel] = Math.round(255 * (0.84 + 0.16 * (peak ? bands[channel]! / peak : 0)));
+          shine.data[i + channel] = Math.round(255 * (0.82 + 0.18 * (peak ? bands[channel]! / peak : 0)));
         }
-        const wide = [0.45, 0.58, 0.72].map((centre) => Math.exp(-(((dist - centre) / 0.48) ** 2)));
+        const wide = [0.42, 0.56, 0.7].map((centre) => Math.exp(-(((dist - centre) / 0.46) ** 2)));
         const top = Math.max(...wide);
         for (let channel = 0; channel < 3; channel++) {
-          bright.data[i + channel] = Math.round(255 * (0.88 + 0.12 * (top ? wide[channel]! / top : 0)));
+          bright.data[i + channel] = Math.round(255 * (0.86 + 0.14 * (top ? wide[channel]! / top : 0)));
         }
-        bright.data[i + 3] = Math.round(clamp(cover * top * (0.55 + 0.3 * glint + 0.15 * reflected), 0, 1) * 255);
+        bright.data[i + 3] = Math.round(clamp(cover * top * (0.62 + 0.34 * glint + 0.18 * reflected), 0, 1) * 255);
       }
       shine.data[i + 3] = Math.round(clamp(alpha, 0, 1) * 255);
     }

@@ -495,15 +495,33 @@ export function createSlider(options: SliderOptions): SliderHandle {
 
 /** 5 & 6. Shared TabBar & SegmentedControl with 3-layer synchronized ink refraction + chromatic dispersion. */
 const TAB_LENS: LensOptions = {
-  strength: 0.2,
+  strength: 1.15,
   strengthProperty: "--lg-tab-bend",
-  dispersion: 2,
+  dispersion: 2.4,
   dispersionProperty: "--lg-tab-dispersion",
-  depth: 4,
+  depth: 0.24,
+  maxDepth: 13,
   dome: 0,
   splay: 1,
-  ink: true,
-  blur: 2,
+  relative: true,
+  bezel: true,
+  ink: false,
+  blur: 0.75,
+};
+
+const TAB_BACKDROP_LENS: LensOptions = {
+  strength: 1.85,
+  strengthProperty: "--lg-tab-bend",
+  dispersion: 2.2,
+  dispersionProperty: "--lg-tab-dispersion",
+  depth: 0.28,
+  maxDepth: 16,
+  dome: 0,
+  splay: 1,
+  relative: true,
+  bezel: true,
+  paintsLight: true,
+  blur: 0.5,
 };
 
 const SEGMENT_LENS: LensOptions = {
@@ -607,7 +625,7 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
 
   const lensOptions = segmented ? SEGMENT_LENS : TAB_LENS;
   const refraction = createLens(lens, lensed, lensOptions, labels);
-  const backdrop = !segmented && refractsBackdrop() ? createBackdropLens(lens, lensOptions) : null;
+  const backdrop = !segmented && refractsBackdrop() ? createBackdropLens(lens, TAB_BACKDROP_LENS) : null;
 
   let slot = 0;
   let width = 0;

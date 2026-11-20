@@ -2,9 +2,7 @@ import {
   analyzeBackdropPixels,
   attachAdaptiveBackdropSensor,
   attachVirtualTiltLight,
-  benchmarkOptics,
   concentricRadius,
-  drawCrossSectionRays,
   setAccessibilityModes,
   type BackdropSample,
 } from "./core";
@@ -532,11 +530,16 @@ function mountApp(): void {
   const setDynamicLightAngle = (deg: number, active: boolean) => {
     currentLightAngle = deg;
     if (active) {
+      const rad = (deg * Math.PI) / 180;
       document.documentElement.setAttribute("data-dynamic-light", "");
       document.documentElement.style.setProperty("--lg-light-angle", deg.toFixed(1));
+      document.documentElement.style.setProperty("--lg-lx", Math.cos(rad).toFixed(4));
+      document.documentElement.style.setProperty("--lg-ly", Math.sin(rad).toFixed(4));
     } else {
       document.documentElement.removeAttribute("data-dynamic-light");
       document.documentElement.style.removeProperty("--lg-light-angle");
+      document.documentElement.style.removeProperty("--lg-lx");
+      document.documentElement.style.removeProperty("--lg-ly");
     }
   };
 
@@ -1115,42 +1118,10 @@ function mountApp(): void {
   );
   requestAnimationFrame(() => adaptiveSensor.update());
 
-  const rayCanvas = document.createElement("canvas");
-  rayCanvas.className = "ray-canvas";
-  let rayMode: "liquid" | "frosted" | "thick-menu" | "materialize" = "liquid";
-  const paintRays = (bend = 1) =>
-    drawCrossSectionRays(rayCanvas, {
-      mode: rayMode,
-      ior: 1.5,
-      dispersion: 0.7,
-      bezelDepth: 22,
-      bendProgress: bend,
-      thicknessScale: rayMode === "thick-menu" ? 1.9 : 1,
-    });
-  requestAnimationFrame(() => paintRays(1));
-
-  const benchCard = document.createElement("div");
-  benchCard.className = "bench-card";
-  const benchBtn = createButton({
-    label: "Run Kernel Benchmark",
-    variant: "filled",
-    onClick: () => {
-      const res = benchmarkOptics(280, 56, 28, 24);
-      benchOut.textContent = `Full-grid scan: ${res.fullGridScanMs.toFixed(2)}ms | TrueGlass kernel: ${res.fluidKernelMs.toFixed(2)}ms (${res.speedup}× faster, ${(res.pixelsSkippedRatio * 100).toFixed(0)}% interior skipped)`;
-    },
-  });
-  const benchOut = document.createElement("div");
-  benchOut.style.marginTop = "10px";
-  benchOut.style.color = "#5eead4";
-  benchCard.innerHTML = `
-    <div style="margin-bottom:10px"><strong>Optical Kernel Benchmark (Flat-Interior-Skipping <code>Uint32Array</code> vs. Full-Grid Scan):</strong></div>
-  `;
-  benchCard.append(benchBtn.element, benchOut);
-
   let currentScene: "sunset-night" | "white-text" = "sunset-night";
   main.appendChild(
     section(
-      "Adaptive Luminance Sensor, Snell Ray-Tracer & Kernel Benchmark",
+      "Adaptive Luminance Sensor",
       sunsetStage,
       optionPills(["Sunset → Night", "Text ↔ Plain White", "No Scroll Edge", "Soft Scroll Edge", "Hard Scroll Edge"], "Sunset → Night", (m) => {
         if (m === "No Scroll Edge") {
@@ -1180,22 +1151,6 @@ function mountApp(): void {
           adaptiveSensor.setSurfaceSize(isLarge ? "large" : "small");
         },
       ),
-      rayCanvas,
-      optionPills(["TrueGlass (Snell)", "Classic Frosted Blur", "2× Thick Menu", "Materialize Bending"], "TrueGlass (Snell)", (m) => {
-        rayMode = m.startsWith("Classic") ? "frosted" : m.startsWith("2×") ? "thick-menu" : m.startsWith("Materialize") ? "materialize" : "liquid";
-        if (rayMode === "materialize") {
-          const t0 = performance.now();
-          const anim = (now: number) => {
-            const p = Math.min(1, (now - t0) / 1300);
-            paintRays(p);
-            if (p < 1) requestAnimationFrame(anim);
-          };
-          requestAnimationFrame(anim);
-        } else {
-          paintRays(1);
-        }
-      }),
-      benchCard,
     ),
   );
 
