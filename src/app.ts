@@ -3,6 +3,7 @@ import {
   attachAdaptiveBackdropSensor,
   attachVirtualTiltLight,
   concentricRadius,
+  createSpring,
   setAccessibilityModes,
   type BackdropSample,
 } from "./core";
@@ -200,6 +201,7 @@ function studioSection(
   id: string,
   title: string,
   description: string,
+  badge: string,
   ...children: HTMLElement[]
 ): HTMLElement {
   const sec = document.createElement("section");
@@ -218,6 +220,11 @@ function studioSection(
     headText.appendChild(desc);
   }
   header.appendChild(headText);
+  if (badge) {
+    const pill = createGlass({ tag: "span", className: "section-glass-pill" });
+    pill.element.textContent = badge;
+    header.appendChild(pill.element);
+  }
   sec.append(header, ...children);
   return sec;
 }
@@ -296,31 +303,88 @@ function mountApp(): void {
   const root = document.getElementById("app")!;
   document.documentElement.setAttribute("data-theme", "dark");
 
-  // Sticky Top Navigation Bar (reveals brand wordmark once hero scrolls out of view)
+  // Floating Sticky TrueGlass Navigation Capsule (dogfoods real Snell bezel + bowed Fresnel rim over live scrolling content)
   const topbar = document.createElement("header");
   topbar.className = "topbar";
-  topbar.innerHTML = `
+
+  const topbarGlass = createGlass({ tag: "div", className: "topbar-glass" });
+  topbarGlass.element.innerHTML = `
     <div class="topbar-inner">
       <a class="brand-link" href="#top" aria-label="TrueGlass">
         <img class="brand-mark" src="/icon.png" alt="" width="26" height="26" draggable="false" />
         <span class="brand-name">TrueGlass</span>
       </a>
       <nav class="topnav" aria-label="Primary sections">
-        <a href="#refraction">Refraction</a>
-        <a href="#optics-lab">Optics Lab</a>
-        <a href="#droplet-fusion">Droplet Fusion</a>
-        <a href="#components">Components</a>
-        <a href="#adaptive">Adaptive</a>
+        <span class="topnav-indicator" aria-hidden="true"></span>
+        <a href="#refraction" data-section="refraction">Refraction</a>
+        <a href="#optics-lab" data-section="optics-lab">Optics Lab</a>
+        <a href="#droplet-fusion" data-section="droplet-fusion">Droplet Fusion</a>
+        <a href="#components" data-section="components">Components</a>
+        <a href="#adaptive" data-section="adaptive">Adaptive</a>
       </nav>
       <div class="topbar-actions">
-        <span class="version-tag">v1.0</span>
+        <a class="version-tag" href="https://www.npmjs.com/package/trueglass" target="_blank" rel="noreferrer" title="View trueglass on npm">npm v1.0.0</a>
         <a class="gh-link" href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">
           ${GITHUB_SVG}<span>GitHub</span>
         </a>
       </div>
     </div>
   `;
+  topbar.appendChild(topbarGlass.element);
   root.appendChild(topbar);
+
+  // Spring-gliding active pill indicator inside the TrueGlass navbar
+  const navEl = topbarGlass.element.querySelector<HTMLElement>(".topnav");
+  const navIndicator = topbarGlass.element.querySelector<HTMLElement>(".topnav-indicator");
+  const navLinks = Array.from(topbarGlass.element.querySelectorAll<HTMLAnchorElement>(".topnav a[data-section]"));
+  let activeSectionId = "refraction";
+  let navReady = false;
+
+  const paintIndicator = () => {
+    if (!navIndicator) return;
+    navIndicator.style.transform = `translate3d(${indX.get().toFixed(2)}px, 0, 0)`;
+    navIndicator.style.width = `${indW.get().toFixed(2)}px`;
+  };
+  const indX = createSpring(0, 260, 26, paintIndicator);
+  const indW = createSpring(0, 260, 26, paintIndicator);
+
+  const setActiveNav = (id: string, instant = false) => {
+    activeSectionId = id;
+    let activeLink: HTMLAnchorElement | null = null;
+    for (const a of navLinks) {
+      const match = a.dataset.section === id;
+      a.toggleAttribute("data-active", match);
+      a.setAttribute("aria-current", match ? "true" : "false");
+      if (match) activeLink = a;
+    }
+    if (!activeLink || !navEl || !navIndicator) return;
+    const x = activeLink.offsetLeft;
+    const w = activeLink.offsetWidth;
+    if (w <= 0) return;
+    indX.set(x, instant || !navReady);
+    indW.set(w, instant || !navReady);
+    navIndicator.setAttribute("data-visible", "true");
+    navReady = true;
+  };
+
+  for (const a of navLinks) {
+    a.addEventListener("click", () => {
+      if (a.dataset.section) setActiveNav(a.dataset.section, false);
+    });
+  }
+
+  // Floating TrueGlass "Back to Top" button (optically materializes once scrolled past hero)
+  const UP_ARROW_SVG = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>`;
+  const backToTopBtn = createButton({
+    iconHtml: UP_ARROW_SVG,
+    iconOnly: true,
+    ariaLabel: "Back to top",
+    materializeOnMount: false,
+    onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+  });
+  backToTopBtn.element.classList.add("back-to-top-glass");
+  backToTopBtn.dematerialize(true);
+  root.appendChild(backToTopBtn.element);
 
   const main = document.createElement("main");
   main.className = "standalone";
@@ -402,12 +466,22 @@ function mountApp(): void {
   }
 
   if (typeof IntersectionObserver !== "undefined") {
+    let wasScrolled = false;
     const heroObserver = new IntersectionObserver(
       (entries) => {
         const visible = entries[0]?.isIntersecting ?? true;
-        topbar.toggleAttribute("data-scrolled", !visible);
+        const scrolled = !visible;
+        topbar.toggleAttribute("data-scrolled", scrolled);
+        if (scrolled !== wasScrolled) {
+          wasScrolled = scrolled;
+          if (scrolled) {
+            backToTopBtn.materialize();
+          } else {
+            backToTopBtn.dematerialize();
+          }
+        }
       },
-      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
+      { rootMargin: "-68px 0px 0px 0px", threshold: 0 },
     );
     heroObserver.observe(titleHeading);
   }
@@ -821,6 +895,7 @@ function mountApp(): void {
       "optics-lab",
       "Glass Magnifier & Optical Lab",
       "Drag the lens across the typography to feel velocity-coupled spring deformation and inspect refraction, dispersion, frost, and dynamic rim lighting side-by-side.",
+      "Snell + WebGL2",
       opticsWorkbench,
     ),
   );
@@ -886,6 +961,7 @@ function mountApp(): void {
       "droplet-fusion",
       "Shared Glass Container",
       "Unites adjacent controls inside one shared backdrop pass so approaching pills fuse via continuous C² liquid bridges.",
+      "C² sminCubic",
       dropletWorkbench,
     ),
   );
@@ -1202,6 +1278,7 @@ function mountApp(): void {
       "components",
       "UI Component Suite",
       "Accessible, zero-dependency controls with closed-form harmonic springs, tactile rubber-banding, and physical glass optics.",
+      "10 Primitives",
       buttonCard,
       componentGrid,
       concentricCard,
@@ -1358,20 +1435,59 @@ function mountApp(): void {
       "adaptive",
       "Adaptive Luminance Sensor",
       "Samples underlying scene luminance, spatial contrast variance, and ambient chroma to maintain crisp legibility over arbitrary content.",
+      "Hysteresis Y / σ",
       sensorWorkbench,
     ),
   );
+
+  // Scroll-spy for the floating TrueGlass navigation capsule
+  const sectionIds = ["refraction", "optics-lab", "droplet-fusion", "components", "adaptive"];
+  const observedSections = sectionIds
+    .map((id) => document.getElementById(id))
+    .filter((el): el is HTMLElement => el !== null);
+  if (typeof IntersectionObserver !== "undefined" && observedSections.length > 0) {
+    const visibleRatios = new Map<string, number>();
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          visibleRatios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        let bestId = "";
+        let bestRatio = 0;
+        for (const id of sectionIds) {
+          const r = visibleRatios.get(id) ?? 0;
+          if (r > bestRatio) {
+            bestRatio = r;
+            bestId = id;
+          }
+        }
+        if (bestId && bestId !== activeSectionId) {
+          setActiveNav(bestId, false);
+        }
+      },
+      { rootMargin: "-90px 0px -45% 0px", threshold: [0, 0.15, 0.35, 0.6] },
+    );
+    for (const sec of observedSections) sectionObserver.observe(sec);
+  }
+  requestAnimationFrame(() => setActiveNav(activeSectionId, true));
+  document.fonts?.ready.then(() => setActiveNav(activeSectionId, true));
+  window.addEventListener("resize", () => setActiveNav(activeSectionId, true), { passive: true });
 
   // Footer
   const footer = document.createElement("footer");
   footer.className = "site-footer";
   footer.innerHTML = `
     <span>TrueGlass — Physically-based optical glass engine &amp; UI suite</span>
-    <span><a href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">github.com/kicode01/trueglass</a> · MIT License</span>
+    <span><a href="https://www.npmjs.com/package/trueglass" target="_blank" rel="noreferrer">npmjs.com/package/trueglass</a> · <a href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">github.com/kicode01/trueglass</a> · MIT License</span>
   `;
   main.appendChild(footer);
 
-  requestAnimationFrame(() => refitAllGlass());
+  requestAnimationFrame(() => {
+    refitAllGlass();
+    if (typeof location !== "undefined" && location.hash.length > 1) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "instant" });
+    }
+  });
   void createInput;
 }
 

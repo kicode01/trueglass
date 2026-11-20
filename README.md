@@ -5,6 +5,7 @@
 # TrueGlass — Physically-Based Optical Glass Engine & UI Suite
 
 **Live Demo:** [https://trueglass.vercel.app](https://trueglass.vercel.app) ([true-glass.vercel.app](https://true-glass.vercel.app))  
+**npm Package:** [https://www.npmjs.com/package/trueglass](https://www.npmjs.com/package/trueglass) (`npm install trueglass`)  
 **Repository:** [https://github.com/kicode01/trueglass](https://github.com/kicode01/trueglass)
 
 A zero-dependency, physically-based **TrueGlass** optical engine and interactive UI component library built in strict TypeScript (`ES2022`). TrueGlass replaces uniform translucent blurs with real-time Snell's law bezel refraction, Cauchy RGB chromatic dispersion, continuous-curvature $G^2$ superellipse geometry, dynamic specular rim lighting, closed-form analytical spring physics, and $C^2$ cubic smooth-min (`sminCubic`) droplet fusion.
