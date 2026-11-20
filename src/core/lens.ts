@@ -813,7 +813,7 @@ export function createLens(glass: HTMLElement, content: HTMLElement, options: Le
       content,
       lenses: 0,
       members: [],
-      name: `gloss-lens-${madeCount++}`,
+      name: `fluid-glass-lens-${madeCount++}`,
       standIn: false,
       built: "",
       placed: "",
@@ -870,7 +870,7 @@ export interface BackdropLens {
 }
 
 export function createBackdropLens(glass: HTMLElement, options: LensOptions): BackdropLens {
-  const name = `gloss-bend-${madeCount++}`;
+  const name = `fluid-glass-bend-${madeCount++}`;
   let fitted: FitResult | null = null;
   let built: FilterGraph | null = null;
   let key = "";
@@ -924,7 +924,7 @@ export function fitBackdropLens(glass: HTMLElement, options: LensOptions, bendSc
   if (!name) {
     const built = buildFilterGraph([{ maps, shine }], false, false);
     placeLenses(built, [{ x: 0, y: 0, width, height, reach: scaledReach, dispersion, blur: 0 }], width, height, false);
-    name = `gloss-backdrop-${backdropFilters.size}`;
+    name = `fluid-glass-backdrop-${backdropFilters.size}`;
     built.filter.id = name;
     svgContainer().append(built.filter);
     backdropFilters.set(id, name);

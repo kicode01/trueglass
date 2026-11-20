@@ -249,7 +249,7 @@ function refitting(element: HTMLElement, fit: () => void, properties: string[]):
 export const refractsBackdrop = (): boolean =>
   typeof navigator !== "undefined" && /Chrom(?:e|ium)|Edg\//.test(navigator.userAgent);
 
-const BACKDROP_MARK = "data-gloss-backdrop";
+const BACKDROP_MARK = "data-fluid-backdrop";
 
 function visibleBox(element: HTMLElement): DOMRect {
   let { left, top, right, bottom } = element.getBoundingClientRect();
@@ -404,7 +404,7 @@ function selectionLens(width: number, height: number, radius: number): Selection
   if (cached) return cached;
 
   const { displacement, highlight, brightHighlight, scale } = selectionMaps(width, height, radius);
-  const id = `gloss-selection-${selections.size}`;
+  const id = `fluid-glass-selection-${selections.size}`;
   const box = { x: 0, y: 0, width, height };
   const filter = svgEl("filter", {
     id,

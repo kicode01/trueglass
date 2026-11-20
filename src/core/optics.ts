@@ -370,14 +370,14 @@ export function generateOpticalMaps(
 
 /**
  * Benchmarks a standard full-grid brute-force CPU scan (4 RGBA buffers) against
- * Gloss's flat-interior-skipping unified Uint32Array kernel on identical glass dimensions.
+ * Fluid Glass's flat-interior-skipping unified Uint32Array kernel on identical glass dimensions.
  */
 export interface OpticsBenchmarkResult {
   width: number;
   height: number;
   iterations: number;
   fullGridScanMs: number;
-  glossKernelMs: number;
+  fluidKernelMs: number;
   speedup: number;
   pixelsSkippedRatio: number;
 }
@@ -422,13 +422,13 @@ export function benchmarkOptics(
   }
   const fullGridScanMs = Math.max(0.05, performance.now() - fullGridStart);
 
-  // Measure Gloss flat-interior-skipping unified kernel
-  const glossStart = performance.now();
+  // Measure Fluid Glass flat-interior-skipping unified kernel
+  const fluidStart = performance.now();
   let lastMaps!: OpticalMaps;
   for (let iter = 0; iter < iterations; iter++) {
     lastMaps = generateOpticalMaps({ width, height, radius }, { lightAngleDeg: -135 + iter }, 1);
   }
-  const glossKernelMs = Math.max(0.05, performance.now() - glossStart);
+  const fluidKernelMs = Math.max(0.05, performance.now() - fluidStart);
   void lastMaps;
 
   // Approximate interior ratio for a pill of width x height with 22px bezel
@@ -441,8 +441,8 @@ export function benchmarkOptics(
     height,
     iterations,
     fullGridScanMs,
-    glossKernelMs,
-    speedup: Number((fullGridScanMs / glossKernelMs).toFixed(2)),
+    fluidKernelMs,
+    speedup: Number((fullGridScanMs / fluidKernelMs).toFixed(2)),
     pixelsSkippedRatio,
   };
 }

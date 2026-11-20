@@ -104,7 +104,7 @@ describe("Fluid Glass Snell's Law & Superellipse Optics", () => {
   it("executes optical benchmark cleanly with measurable interior skipping", () => {
     const res = benchmarkOptics(240, 56, 28, 4);
     expect(res.fullGridScanMs).toBeGreaterThan(0);
-    expect(res.glossKernelMs).toBeGreaterThan(0);
+    expect(res.fluidKernelMs).toBeGreaterThan(0);
     expect(res.pixelsSkippedRatio).toBeGreaterThan(0.15);
   });
 });
@@ -243,7 +243,7 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
     container.remove();
   });
 
-  it("lazily binds detached createGlass() elements to [data-gloss-backdrop] once mounted and refitted", () => {
+  it("lazily binds detached createGlass() elements to [data-fluid-backdrop] once mounted and refitted", () => {
     const mockCtx = {
       fillStyle: "#0000",
       createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
@@ -254,7 +254,7 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
 
     const stage = document.createElement("div");
     const backdrop = document.createElement("div");
-    backdrop.setAttribute("data-gloss-backdrop", "");
+    backdrop.setAttribute("data-fluid-backdrop", "");
 
     // Create glass BEFORE attaching to DOM or backdrop container (vanilla TS construction order)
     const glass = createGlass({ materializeOnMount: false });
@@ -275,7 +275,7 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
 
       expect(backdrop.style.filter).toBe("");
       glass.refit();
-      expect(backdrop.style.filter).toMatch(/^url\(["']?#gloss-lens-\d+-\d+["']?\)$/);
+      expect(backdrop.style.filter).toMatch(/^url\(["']?#fluid-glass-lens-\d+-\d+["']?\)$/);
     } finally {
       glass.destroy();
       stage.remove();

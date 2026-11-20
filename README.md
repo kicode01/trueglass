@@ -1,6 +1,9 @@
-# Gloss — Fluid Glass Engine & UI Suite
+# Fluid Glass — Physically-Based Optical Engine & UI Suite
 
-A zero-dependency, physically-based **Fluid Glass** optical engine and interactive UI component library built in strict TypeScript (`ES2022`). Gloss replaces uniform translucent blurs with real-time Snell's law bezel refraction, Cauchy RGB chromatic dispersion, continuous-curvature $G^2$ superellipse geometry, dynamic specular rim lighting, closed-form analytical spring physics, and $C^2$ cubic smooth-min (`sminCubic`) droplet fusion.
+**Live Demo:** [https://fluid-glass-engine.vercel.app](https://fluid-glass-engine.vercel.app) ([Mirror](https://fluid-glass-sage.vercel.app))  
+**Repository:** [https://github.com/kicode01/fluid-glass](https://github.com/kicode01/fluid-glass)
+
+A zero-dependency, physically-based **Fluid Glass** optical engine and interactive UI component library built in strict TypeScript (`ES2022`). Fluid Glass replaces uniform translucent blurs with real-time Snell's law bezel refraction, Cauchy RGB chromatic dispersion, continuous-curvature $G^2$ superellipse geometry, dynamic specular rim lighting, closed-form analytical spring physics, and $C^2$ cubic smooth-min (`sminCubic`) droplet fusion.
 
 ---
 
@@ -22,7 +25,7 @@ A zero-dependency, physically-based **Fluid Glass** optical engine and interacti
 
 ```mermaid
 flowchart LR
-  BG["Underlying Scene / Backdrop ([data-gloss-backdrop])"] --> SDF["G2 L4 Superellipse SDF & C2 sminCubic Union"]
+  BG["Underlying Scene / Backdrop ([data-fluid-backdrop])"] --> SDF["G2 L4 Superellipse SDF & C2 sminCubic Union"]
   SDF --> LUT["Snell's Law Bezel LUT (IOR 1.50, Flat Interior Skip)"]
   LUT --> DISP["RGB Chromatic Dispersion (sRGB SVG Filter / WebGL2 Shader)"]
   BG --> SENSOR["Adaptive Sensor (Luma Y, Contrast sigma_Y, Ambient RGB)"]
@@ -51,7 +54,7 @@ npm run build    # Type-check with tsc --noEmit and build production assets to d
 | :--- | :--- | :--- |
 | [optics.ts](src/core/optics.ts) | `superellipseSDF`, `sminCubic`, `sminCubicGradient`, `concentricRadius`, `computeBezelProfile`, `generateOpticalMaps`, `benchmarkOptics` | $G^2$ squircle math, $C^2$ union blending, Snell bezel LUTs, and flat-interior-skipping `Uint32Array` map kernel. |
 | [lens.ts](src/core/lens.ts) | `createLens`, `createBackdropLens`, `fitBackdropLens`, `lensMap`, `lensField`, `distance`, `shapeOf` | sRGB `<feDisplacementMap>` SVG filter graph generator, $L^4$ corner normals, and stand-in exclusion masking. |
-| [refraction.ts](src/core/refraction.ts) | `GLASS`, `rimMap`, `attachRefraction`, `refitAllRefractions`, `materializeAllRefractions` | Lazy `[data-gloss-backdrop]` binding, up to 3x DPR anisotropic Fresnel rim painting, and spring materialize/dematerialize. |
+| [refraction.ts](src/core/refraction.ts) | `GLASS`, `rimMap`, `attachRefraction`, `refitAllRefractions`, `materializeAllRefractions` | Lazy `[data-fluid-backdrop]` binding, up to 3x DPR anisotropic Fresnel rim painting, and spring materialize/dematerialize. |
 | [drawn.ts](src/core/drawn.ts) | `createDrawnLens`, `drawsLens` | WebGL2 three-stage (`BEND`/`SOFTEN`/`FINISH`) backdrop lens renderer for non-SVG `backdrop-filter` engines. |
 | [spring.ts](src/core/spring.ts) | `createSpring`, `advanceSpringState`, `isReducedMotion` | Closed-form 2nd-order differential spring animator across all damping regimes. |
 | [adaptive-sensor.ts](src/core/adaptive-sensor.ts) | `analyzeBackdropPixels`, `attachAdaptiveBackdropSensor` | Real-time luminance, edge-contrast variance, hysteresis polarity flipping, and ambient color spill tracking. |
@@ -64,7 +67,7 @@ npm run build    # Type-check with tsc --noEmit and build production assets to d
 
 Import directly from [src/components/index.ts](src/components/index.ts) (alongside [src/styles.css](src/styles.css)):
 
-* **`createGlass(options)`**: Universal Fluid Glass container with automatic `[data-gloss-backdrop]` linking, `material` variants (`"regular" | "clear" | "identity"`), optional `dimmingScrim`, and `materialize()` / `dematerialize()`.
+* **`createGlass(options)`**: Universal Fluid Glass container with automatic `[data-fluid-backdrop]` linking, `material` variants (`"regular" | "clear" | "identity"`), optional `dimmingScrim`, and `materialize()` / `dematerialize()`.
 * **`createGlassContainer(options)`**: Shared sampling container uniting child pills inside one WebGL2 pass with `sminCubic` liquid bridge morphing, chromatic neck dispersion, cross-sibling touch glow, and homogeneous material validation (throws if `"regular"` and `"clear"` children are mixed).
 * **`createButton(options)`**: Fluid Glass pill button with rubber-band spring press, tap shimmer sweep (`[data-shimmer]`), `glass` / `filled` variants, custom `tint`, `destructive` styling, and materialize-by-bending.
 * **`createSwitch(options)`**: Dual-bed stand-in refraction switch with exclusion masking, spring lift, drag scrubbing, and asymptotic bounded overshoot.

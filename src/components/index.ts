@@ -55,7 +55,7 @@ function applyGlassMaterial(el: HTMLElement, material: GlassMaterial = "regular"
   }
 }
 
-/** 1. Universal Glass Container (automatically links to `[data-gloss-backdrop]` when overlapping). */
+/** 1. Universal Glass Container (automatically links to `[data-fluid-backdrop]` when overlapping). */
 export interface GlassHandle<T extends HTMLElement = HTMLElement> {
   element: T;
   refraction: RefractionHandle;

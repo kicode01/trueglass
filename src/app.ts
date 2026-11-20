@@ -254,21 +254,21 @@ function mountApp(): void {
   titleHeading.innerHTML = `
     <svg class="title-glass" aria-hidden="true" focusable="false">
       <defs>
-        <text id="gloss-title-lettering" x="0" y="1">Gloss</text>
-        <linearGradient id="gloss-title-face" x1="0" y1="0" x2="0.7" y2="1">
+        <text id="fluid-title-lettering" x="0" y="1">Fluid Glass</text>
+        <linearGradient id="fluid-title-face" x1="0" y1="0" x2="0.7" y2="1">
           <stop stop-color="#edf5ff" stop-opacity="0.78"/>
           <stop offset="0.32" stop-color="#c4d1e3" stop-opacity="0.44"/>
           <stop offset="0.62" stop-color="#a6b5ce" stop-opacity="0.28"/>
           <stop offset="1" stop-color="#e3efff" stop-opacity="0.68"/>
         </linearGradient>
-        <linearGradient id="gloss-title-rim" x1="0" y1="0" x2="0.6" y2="1">
+        <linearGradient id="fluid-title-rim" x1="0" y1="0" x2="0.6" y2="1">
           <stop stop-color="#fff" stop-opacity="0.96"/>
           <stop offset="0.3" stop-color="#dae6f6" stop-opacity="0.62"/>
           <stop offset="0.55" stop-color="#9eafc7" stop-opacity="0.18"/>
           <stop offset="0.78" stop-color="#e0ebfa" stop-opacity="0.42"/>
           <stop offset="1" stop-color="#fff" stop-opacity="0.92"/>
         </linearGradient>
-        <filter id="gloss-title-bevel" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+        <filter id="fluid-title-bevel" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
           <feGaussianBlur in="SourceAlpha" stdDeviation="0.75" result="surface"/>
           <feSpecularLighting in="surface" surfaceScale="2.5" specularConstant="0.9" specularExponent="24" lighting-color="#f5f9ff" result="reflection">
             <feDistantLight azimuth="225" elevation="45"/>
@@ -276,15 +276,15 @@ function mountApp(): void {
           <feComposite in="reflection" in2="SourceAlpha" operator="in" result="bevel"/>
           <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="bevel"/></feMerge>
         </filter>
-        <filter id="gloss-title-edge" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+        <filter id="fluid-title-edge" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
           <feMorphology in="SourceAlpha" operator="erode" radius="0.55" result="interior"/>
           <feComposite in="SourceAlpha" in2="interior" operator="out" result="rim"/>
           <feComposite in="SourceGraphic" in2="rim" operator="in"/>
         </filter>
       </defs>
-      <use href="#gloss-title-lettering" fill="url(#gloss-title-face)" filter="url(#gloss-title-bevel)"/>
-      <use href="#gloss-title-lettering" fill="url(#gloss-title-rim)" filter="url(#gloss-title-edge)"/>
-    </svg><span class="title-text">Gloss</span>
+      <use href="#fluid-title-lettering" fill="url(#fluid-title-face)" filter="url(#fluid-title-bevel)"/>
+      <use href="#fluid-title-lettering" fill="url(#fluid-title-rim)" filter="url(#fluid-title-edge)"/>
+    </svg><span class="title-text">Fluid Glass</span>
   `;
 
   const intro = document.createElement("p");
@@ -312,7 +312,7 @@ function mountApp(): void {
   scroller.className = "scroller";
   const wallpapers = document.createElement("div");
   wallpapers.className = "wallpapers";
-  wallpapers.setAttribute("data-gloss-backdrop", "");
+  wallpapers.setAttribute("data-fluid-backdrop", "");
 
   const imgLight = document.createElement("img");
   imgLight.src = "/img/fluid-light.webp";
@@ -409,7 +409,7 @@ function mountApp(): void {
 
   const magScene = document.createElement("div");
   magScene.className = "scene";
-  magScene.setAttribute("data-gloss-backdrop", "");
+  magScene.setAttribute("data-fluid-backdrop", "");
 
   const magImg = document.createElement("img");
   magImg.src = "/img/fluid-magnifier.webp";
@@ -946,7 +946,7 @@ function mountApp(): void {
   concentricBg.className = "concentric-backdrop";
   concentricBg.src = "/img/fluid-dark.webp";
   concentricBg.alt = "";
-  concentricBg.setAttribute("data-gloss-backdrop", "");
+  concentricBg.setAttribute("data-fluid-backdrop", "");
 
   const rOuter = 28;
   const rMid = concentricRadius(rOuter, 8);
@@ -1007,7 +1007,7 @@ function mountApp(): void {
   const sunsetScroller = document.createElement("div");
   sunsetScroller.className = "sunset-scroller";
   const sunsetContent = document.createElement("div");
-  sunsetContent.setAttribute("data-gloss-backdrop", "");
+  sunsetContent.setAttribute("data-fluid-backdrop", "");
   const sunsetCanvas = document.createElement("canvas");
   sunsetCanvas.className = "sunset-canvas";
   sunsetContent.appendChild(sunsetCanvas);
@@ -1102,7 +1102,7 @@ function mountApp(): void {
     variant: "filled",
     onClick: () => {
       const res = benchmarkOptics(280, 56, 28, 24);
-      benchOut.textContent = `Full-grid scan: ${res.fullGridScanMs.toFixed(2)}ms | Gloss kernel: ${res.glossKernelMs.toFixed(2)}ms (${res.speedup}× faster, ${(res.pixelsSkippedRatio * 100).toFixed(0)}% interior skipped)`;
+      benchOut.textContent = `Full-grid scan: ${res.fullGridScanMs.toFixed(2)}ms | Fluid Glass kernel: ${res.fluidKernelMs.toFixed(2)}ms (${res.speedup}× faster, ${(res.pixelsSkippedRatio * 100).toFixed(0)}% interior skipped)`;
     },
   });
   const benchOut = document.createElement("div");
