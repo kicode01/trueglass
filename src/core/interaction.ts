@@ -66,7 +66,16 @@ export function attachInteractivePress(
     }),
   );
 
-  let activePointer: { id: number; startX: number; startY: number; box: DOMRect; feel: PressFeel } | null = null;
+  let activePointer: {
+    id: number;
+    startX: number;
+    startY: number;
+    box: DOMRect;
+    feel: PressFeel;
+    isTouch: boolean;
+    pulledFar: boolean;
+  } | null = null;
+  let suppressClickUntil = 0;
 
   const setTargets = (targets: readonly number[], tuning: readonly [number, number]) => {
     springs.forEach((sp, idx) => {
@@ -77,18 +86,22 @@ export function attachInteractivePress(
 
   const updatePointer = (ev: PointerEvent) => {
     if (!activePointer) return;
-    const { box, feel } = activePointer;
+    const { box, feel, isTouch } = activePointer;
     const relX = box.width > 0 ? ((ev.clientX - box.left) / box.width) * 100 : 50;
     const relY = box.height > 0 ? ((ev.clientY - box.top) / box.height) * 100 : 50;
     element.style.setProperty("--lg-x", `${Math.max(0, Math.min(100, relX)).toFixed(1)}%`);
     element.style.setProperty("--lg-y", `${Math.max(0, Math.min(100, relY)).toFixed(1)}%`);
 
+    const rawDx = ev.clientX - activePointer.startX;
+    const rawDy = ev.clientY - activePointer.startY;
+    if (Math.hypot(rawDx, rawDy) > 40) activePointer.pulledFar = true;
+
     const w = Math.max(1, box.width);
     const h = Math.max(1, box.height);
     const base = 1 + feel.growPx / Math.max(w, h);
     const aspect = w / h;
-    const dx = (ev.clientX - activePointer.startX) / aspect;
-    const dy = ev.clientY - activePointer.startY;
+    const dx = rawDx / aspect;
+    const dy = rawDy;
     const len = Math.hypot(dx, dy);
 
     if (len < 0.5) {
@@ -99,15 +112,17 @@ export function attachInteractivePress(
     const nx = dx / len;
     const ny = dy / len;
     const rubber = 1 - 1 / (1 + len / h / (5 * aspect));
-    const stretch = 1 + (6 / h) * rubber * Math.abs(Math.abs(nx) - Math.abs(ny));
+    const stretchGain = isTouch ? 9 : 6;
+    const pullTravel = isTouch ? 13 : 8;
+    const stretch = 1 + (stretchGain / h) * rubber * Math.abs(Math.abs(nx) - Math.abs(ny));
     const horizontal = Math.abs(nx) > Math.abs(ny);
 
     setTargets(
       [
         base * (horizontal ? stretch : 1 / stretch),
         base * (horizontal ? 1 / stretch : stretch),
-        nx * 8 * rubber,
-        ny * 8 * rubber,
+        nx * pullTravel * rubber,
+        ny * pullTravel * rubber,
       ],
       feel.press,
     );
@@ -117,11 +132,42 @@ export function attachInteractivePress(
     if (ev.pointerId === activePointer?.id) updatePointer(ev);
   };
 
+  const onTouchMove = (ev: TouchEvent) => {
+    if (activePointer && ev.cancelable) ev.preventDefault();
+  };
+
+  const onClickCapture = (ev: MouseEvent) => {
+    if (ev.isTrusted && ev.detail !== 0 && performance.now() < suppressClickUntil) {
+      suppressClickUntil = 0;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    }
+  };
+
   const onEnd = (ev?: PointerEvent) => {
     if (ev && ev.pointerId !== activePointer?.id) return;
-    const feel = activePointer?.feel ?? POINTER_FEEL;
+    const old = activePointer;
+    const feel = old?.feel ?? POINTER_FEEL;
     activePointer = null;
     delete element.dataset.pressed;
+    if (old) {
+      if (element.hasPointerCapture?.(old.id)) {
+        try {
+          element.releasePointerCapture(old.id);
+        } catch {
+          // Ignore if already released
+        }
+      }
+      if (ev && ev.type === "pointerup" && old.pulledFar) {
+        const slack = 28;
+        const inside =
+          ev.clientX >= old.box.left - slack &&
+          ev.clientX <= old.box.right + slack &&
+          ev.clientY >= old.box.top - slack &&
+          ev.clientY <= old.box.bottom + slack;
+        if (!inside) suppressClickUntil = performance.now() + 400;
+      }
+    }
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onEnd);
     window.removeEventListener("pointercancel", onEnd);
@@ -131,13 +177,22 @@ export function attachInteractivePress(
   const onDown = (ev: PointerEvent) => {
     if (!ev.isPrimary || ev.button !== 0 || activePointer) return;
     if (options.disabledCheck?.() || element.matches(":disabled")) return;
+    const isTouch = ev.pointerType !== "mouse";
     activePointer = {
       id: ev.pointerId,
       startX: ev.clientX,
       startY: ev.clientY,
       box: element.getBoundingClientRect(),
-      feel: ev.pointerType === "mouse" ? POINTER_FEEL : TOUCH_FEEL,
+      feel: isTouch ? TOUCH_FEEL : POINTER_FEEL,
+      isTouch,
+      pulledFar: false,
     };
+    try {
+      element.setPointerCapture?.(ev.pointerId);
+    } catch {
+      // Synthetic events in tests may not have an active pointer id
+    }
+    if (isTouch) hapticTap(5);
     element.dataset.pressed = "";
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onEnd);
@@ -147,12 +202,18 @@ export function attachInteractivePress(
 
   const onReset = () => onEnd();
   element.addEventListener("pointerdown", onDown);
+  element.addEventListener("lostpointercapture", onEnd);
+  element.addEventListener("touchmove", onTouchMove, { passive: false });
+  element.addEventListener("click", onClickCapture, true);
   window.addEventListener("blur", onReset);
 
   return () => {
     onEnd();
     springs.forEach((sp) => sp.stop());
     element.removeEventListener("pointerdown", onDown);
+    element.removeEventListener("lostpointercapture", onEnd);
+    element.removeEventListener("touchmove", onTouchMove);
+    element.removeEventListener("click", onClickCapture, true);
     window.removeEventListener("blur", onReset);
     element.style.removeProperty("scale");
     element.style.removeProperty("translate");

@@ -5,7 +5,7 @@
 <h1 align="center">TrueGlass</h1>
 
 <p align="center">
-  <strong>True Liquid Glass for the Web — Real Optical Refraction, Droplet Fusion &amp; Tactile UI Components</strong>
+  <strong>True Liquid Glass for the Web: Real Optical Refraction, Droplet Fusion &amp; Tactile UI Components</strong>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
 
 <p align="center">
   <a href="https://trueglass.vercel.app">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/hero-showcase.png" alt="TrueGlass Live Optical Studio — Liquid Glass TabBar, Button, Slider, Switch, and SearchField refracting over wallpaper" width="100%" />
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/hero-showcase.png" alt="TrueGlass Live Optical Studio: Liquid Glass TabBar, Button, Slider, Switch, and SearchField refracting over wallpaper" width="100%" />
   </a>
 </p>
 
@@ -39,18 +39,18 @@
 
 ## What is TrueGlass?
 
-**TrueGlass** brings true **liquid glass** optics and tactile fluid physics to the open web — with **zero runtime dependencies** and full TypeScript support.
+**TrueGlass** brings true **liquid glass** optics and tactile fluid physics to the open web, with **zero runtime dependencies** and full TypeScript support.
 
 Most glassmorphism libraries just slap `backdrop-filter: blur(12px)` onto a translucent rectangle. Real liquid glass behaves like a physical optical lens:
 
-- **Real Curved Edge Refraction** — Light, images, and text bend naturally around rounded squircle rims while the flat center stays crisp and readable.
-- **Subtle Prismatic Rainbow Edges** — High-curvature rims and lifted droplets split Red, Green, and Blue light just like real optical glass.
-- **Tactile Liquid Motion** — Buttons rubber-band when pressed, switches and tab bars lift into magnifying glass droplets when dragged, and menus morph smoothly out of their trigger button.
-- **Liquid Droplet Merging** — Place two glass pills close together inside a `GlassContainer` and they smoothly melt into one continuous liquid bridge.
-- **Dynamic Specular Rim Lighting** — Edges catch light dynamically as you tilt your phone or move your cursor — rendered purely on the GPU.
-- **Auto-Adapts to Any Background** — Scroll a glass bar from a bright photo or white page into dark mode and TrueGlass automatically flips text contrast and adjusts shadows so controls stay legible.
-- **Works Across Every Modern Browser** — Uses native GPU-accelerated SVG displacement in Chromium, automatically switches to a custom WebGL2 shader engine in Safari & Firefox, and degrades gracefully on older devices.
-- **Accessibility Built In** — One call toggles `Reduce Transparency`, `Increase Contrast`, and `Reduce Motion`.
+- **Real Curved Edge Refraction:** Light, images, and text bend naturally around rounded squircle rims while the flat center stays crisp and readable.
+- **Subtle Prismatic Rainbow Edges:** High-curvature rims and lifted droplets split Red, Green, and Blue light just like real optical glass.
+- **Tactile Liquid Motion:** Buttons rubber-band when pressed, switches and tab bars lift into magnifying glass droplets when dragged, and menus morph smoothly out of their trigger button.
+- **Liquid Droplet Merging:** Place two glass pills close together inside a `GlassContainer` and they smoothly melt into one continuous liquid bridge.
+- **Dynamic Specular Rim Lighting:** Edges catch light dynamically as you tilt your phone or move your cursor, rendered purely on the GPU.
+- **Auto-Adapts to Any Background:** Scroll a glass bar from a bright photo or white page into dark mode and TrueGlass automatically flips text contrast and adjusts shadows so controls stay legible.
+- **Works Across Every Modern Browser:** Uses native GPU-accelerated SVG displacement in Chromium, automatically switches to a custom WebGL2 shader engine in Safari, Firefox, and Android browsers, and degrades gracefully on older devices.
+- **Accessibility Built In:** One call toggles `Reduce Transparency`, `Increase Contrast`, and `Reduce Motion`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/snell-bezel-diagram.svg" alt="Standard CSS backdrop-filter blur compared to TrueGlass curved bezel refraction and RGB dispersion" width="100%" />
@@ -182,7 +182,7 @@ export function LiquidGlassPill({ children }: { children: React.ReactNode }) {
 
 | Import Path | What It Includes |
 | :--- | :--- |
-| `trueglass` | Everything — headless optical engine + all 10 UI components |
+| `trueglass` | Everything: headless optical engine + all 10 UI components |
 | `trueglass/core` | Headless engine only (refraction, springs, SDF math, adaptive sensor, a11y) |
 | `trueglass/components` | Ready-to-use interactive UI component factories |
 | `trueglass/styles.css` | Scoped `.lg-*` component & token styles (zero global resets) |
@@ -203,7 +203,7 @@ Drag the velocity-reactive glass lens across typography and dial in **Bend**, **
 </p>
 
 ### 2. Shared Glass Container · Liquid Droplet Fusion
-Two separate controls rendered in one shared WebGL2 pass — drag the Search orb closer to the Library pill and watch them melt together with a smooth liquid neck and cross-sibling touch glow.
+Two separate controls rendered in one shared WebGL2 pass. Drag the Search orb closer to the Library pill and watch them melt together with a smooth liquid neck and cross-sibling touch glow.
 
 <p align="center">
   <a href="https://trueglass.vercel.app/#droplet-fusion">
@@ -212,7 +212,7 @@ Two separate controls rendered in one shared WebGL2 pass — drag the Search orb
 </p>
 
 ### 3. UI Component Suite & Concentric Architecture
-Ten zero-dependency Liquid Glass primitives — **Button**, **TabBar**, **SegmentedControl**, **Menu**, **SearchField**, **Input**, **Slider**, **Switch**, **Glass**, and **GlassContainer** — designed with concentric squircle radii and built-in accessibility modes.
+Ten zero-dependency Liquid Glass primitives (**Button**, **TabBar**, **SegmentedControl**, **Menu**, **SearchField**, **Input**, **Slider**, **Switch**, **Glass**, and **GlassContainer**) designed with concentric squircle radii and built-in accessibility modes.
 
 <p align="center">
   <a href="https://trueglass.vercel.app/#components">
@@ -221,7 +221,7 @@ Ten zero-dependency Liquid Glass primitives — **Button**, **TabBar**, **Segmen
 </p>
 
 ### 4. Adaptive Luminance & Contrast Sensor
-Scroll a floating navigation bar from a golden-hour sunset across high-contrast editorial text into a dark starry night — TrueGlass measures luminance and edge contrast in real time to flip light/dark polarity and adapt grounding shadows automatically.
+Scroll a floating navigation bar from a golden-hour sunset across high-contrast editorial text into a dark starry night. TrueGlass measures luminance and edge contrast in real time to flip light/dark polarity and adapt grounding shadows automatically.
 
 <p align="center">
   <a href="https://trueglass.vercel.app/#adaptive">
@@ -306,10 +306,10 @@ For engineers curious about how TrueGlass achieves 60–240 Hz physical refracti
   <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/optical-pipeline.svg" alt="TrueGlass Dual-Engine Optical Pipeline architecture diagram" width="100%" />
 </p>
 
-1. **Geometry ($G^2$ Superellipses & $C^2$ Fusion)** — Glass shapes use $L^4$ superellipse signed distance fields (`superellipseSDF`) for curvature-continuous squircle corners, and cubic smooth-minimum (`sminCubic`) for smooth liquid bridges inside `createGlassContainer`.
-2. **Physics (Snell's Law + Flat-Interior Skip)** — Surface normals along the curved bezel refract rays via $n_1 \sin\theta_1 = n_2 \sin\theta_2$ (`IOR 1.50`) while a fast flat-interior skip kernel bypasses the unbent center pixels.
-3. **Dual Render Engine** — Chromium renders packed-RG `<feDisplacementMap>` SVG filters in locked sRGB space; Safari and Firefox automatically use a 3-pass WebGL2 pipeline (`BEND → SOFTEN → FINISH`). Both engines pause automatically when off-screen, idle, or in background tabs.
-4. **Pure-GPU Rim Lighting** — Instead of re-baking rim textures on the CPU when tilting, specular highlights are driven directly on the GPU via `--lg-light-angle` (`--lg-lx`, `--lg-ly`).
+1. **Geometry ($G^2$ Superellipses & $C^2$ Fusion):** Glass shapes use $L^4$ superellipse signed distance fields (`superellipseSDF`) for curvature-continuous squircle corners, and cubic smooth-minimum (`sminCubic`) for smooth liquid bridges inside `createGlassContainer`.
+2. **Physics (Snell's Law + Flat-Interior Skip):** Surface normals along the curved bezel refract rays via $n_1 \sin\theta_1 = n_2 \sin\theta_2$ (`IOR 1.50`) while a fast flat-interior skip kernel bypasses the unbent center pixels.
+3. **Dual Render Engine:** Desktop Chromium renders packed-RG `<feDisplacementMap>` SVG filters in locked sRGB space; Safari, Firefox, and Android browsers automatically use a 3-pass WebGL2 pipeline (`BEND → SOFTEN → FINISH`). Both engines pause automatically when off-screen, idle, or in background tabs.
+4. **Pure-GPU Rim Lighting:** Instead of re-baking rim textures on the CPU when tilting, specular highlights are driven directly on the GPU via `--lg-light-angle` (`--lg-lx`, `--lg-ly`).
 
 ---
 

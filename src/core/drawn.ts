@@ -1,5 +1,6 @@
 import {
   getOpticalDpr,
+  isMobileDevice,
   lensField,
   recordFrameTime,
   refractsBackdrop,
@@ -466,6 +467,7 @@ interface Scene {
   lenses: Set<Drawn>;
   pieces: Piece[];
   stale: boolean;
+  transitionUntil: number;
   version: number;
   measured: number;
   from: DOMRect;
@@ -485,6 +487,7 @@ function getScene(source: HTMLElement): Scene {
     lenses: new Set(),
     pieces: [],
     stale: true,
+    transitionUntil: 0,
     version: 0,
     measured: -1,
     from: new DOMRect(),
@@ -497,6 +500,15 @@ function getScene(source: HTMLElement): Scene {
     made.stale = true;
     wakeTick();
   };
+  const markTransition = () => {
+    made.stale = true;
+    made.transitionUntil = (typeof performance !== "undefined" ? performance.now() : 0) + 340;
+    wakeTick();
+  };
+  const onTransitionEnd = () => {
+    made.transitionUntil = 0;
+    mark();
+  };
   const observer = new MutationObserver((records) => {
     if (records.some((record) => !(record.target instanceof Element) || !record.target.closest(".lg-drawn"))) mark();
   });
@@ -505,28 +517,32 @@ function getScene(source: HTMLElement): Scene {
   resizes.observe(source);
   window.addEventListener("resize", mark);
   source.addEventListener("load", mark, true);
-  source.addEventListener("transitionend", mark, true);
+  source.addEventListener("transitionstart", markTransition, true);
+  source.addEventListener("transitionrun", markTransition, true);
+  source.addEventListener("transitionend", onTransitionEnd, true);
   document.fonts?.addEventListener?.("loadingdone", mark);
   const theme = new MutationObserver((records) => {
     for (const record of records) {
       const t = record.target;
       if (t === document.documentElement || (t instanceof Element && (t.contains(source) || source.contains(t)))) {
-        mark();
+        markTransition();
         return;
       }
     }
   });
   theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"], subtree: true });
   const scheme = matchMedia("(prefers-color-scheme: dark)");
-  scheme.addEventListener?.("change", mark);
+  scheme.addEventListener?.("change", markTransition);
   made.stop = () => {
     theme.disconnect();
-    scheme.removeEventListener?.("change", mark);
+    scheme.removeEventListener?.("change", markTransition);
     observer.disconnect();
     resizes.disconnect();
     window.removeEventListener("resize", mark);
     source.removeEventListener("load", mark, true);
-    source.removeEventListener("transitionend", mark, true);
+    source.removeEventListener("transitionstart", markTransition, true);
+    source.removeEventListener("transitionrun", markTransition, true);
+    source.removeEventListener("transitionend", onTransitionEnd, true);
     document.fonts?.removeEventListener?.("loadingdone", mark);
     const { whole } = made;
     if (whole && whole.of === shared) whole.of.gl.deleteTexture(whole.texture);
@@ -561,12 +577,15 @@ function surveyScene(made: Scene, pen: CanvasRenderingContext2D): void {
 function measureScene(made: Scene, frame: number, pen: CanvasRenderingContext2D): void {
   if (made.measured === frame) return;
   made.measured = frame;
-  if (made.stale) surveyScene(made, pen);
+  const now = typeof performance !== "undefined" ? performance.now() : 0;
+  const transitioning = made.transitionUntil > 0 && now < made.transitionUntil;
+  if (made.stale || transitioning) surveyScene(made, pen);
   const from = (made.from = made.source.getBoundingClientRect());
   let key = `${made.version}`;
   made.boxes = made.pieces.map((piece) => {
     const box = piece.element.getBoundingClientRect();
     key += `|${(box.x - from.x).toFixed(2)},${(box.y - from.y).toFixed(2)},${box.width.toFixed(2)},${box.height.toFixed(2)}`;
+    if (transitioning) key += `,a${piece.alpha.toFixed(2)}`;
     if (piece.live) key += `,${piece.live()}`;
     return box;
   });
@@ -645,9 +664,13 @@ const WHOLE = 1 << 23;
 
 function paintWhole(on: Stage, made: Scene, density: number): Whole | null {
   const { width, height } = made.from;
-  if (!width || !height || made.pieces.some((piece) => piece.live)) return null;
-  const finest = Math.min(density, on.largest / Math.max(width, height), Math.sqrt(WHOLE / (width * height)));
-  if (finest < Math.min(density, 1)) return null;
+  const now = typeof performance !== "undefined" ? performance.now() : 0;
+  if (!width || !height || (made.transitionUntil > 0 && now < made.transitionUntil) || made.pieces.some((piece) => piece.live)) {
+    return null;
+  }
+  const mobileCap = isMobileDevice() && width * height > 500000 ? 1 : density;
+  const finest = Math.min(mobileCap, on.largest / Math.max(width, height), Math.sqrt(WHOLE / (width * height)));
+  if (finest < Math.min(mobileCap, 1)) return null;
   const key = `${made.key}|${finest}`;
   let whole = made.whole;
   if (whole?.of === on && whole.key === key) return whole;

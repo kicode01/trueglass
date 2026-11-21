@@ -3,7 +3,7 @@
   "version": "1.0.3",
   "private": false,
   "license": "MIT",
-  "description": "True liquid glass for the web — zero-dependency optical refraction engine and UI component suite with Snell bezel bending, chromatic dispersion, droplet fusion, and adaptive contrast.",
+  "description": "True liquid glass for the web: zero-dependency optical refraction engine and UI component suite with Snell bezel bending, chromatic dispersion, droplet fusion, and adaptive contrast.",
   "type": "module",
   "main": "./dist-lib/index.js",
   "module": "./dist-lib/index.js",

@@ -647,4 +647,49 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
       window.matchMedia = origMM;
     }
   });
+
+  it("supports touch pulling on buttons and direct touch scrubbing on sliders for mobile devices", () => {
+    setAccessibilityModes({ reduceMotion: true });
+    const onClick = vi.fn();
+    const btn = createButton({ label: "Continue", onClick });
+    const slider = createSlider({ ariaLabel: "Volume", min: 0, max: 100, step: 1, value: 20 });
+    document.body.append(btn.element, slider.element);
+
+    vi.spyOn(btn.element, "getBoundingClientRect").mockReturnValue(new DOMRect(100, 100, 120, 40));
+    vi.spyOn(slider.input, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 236, 40));
+
+    const fire = (target: EventTarget, type: string, init: Record<string, unknown>) => {
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      Object.assign(ev, init);
+      target.dispatchEvent(ev);
+      return ev;
+    };
+
+    try {
+      // Touch-pull button horizontally: stretches scale & translate while keeping data-pressed active
+      fire(btn.element, "pointerdown", { isPrimary: true, button: 0, pointerId: 7, pointerType: "touch", clientX: 160, clientY: 120 });
+      expect(btn.element.hasAttribute("data-pressed")).toBe(true);
+      fire(window, "pointermove", { isPrimary: true, pointerId: 7, pointerType: "touch", clientX: 220, clientY: 120 });
+      expect(btn.element.style.translate).not.toBe("0.00px 0.00px");
+      expect(btn.element.style.scale).not.toBe("1.0000 1.0000");
+
+      // Releasing far off-button resets transform cleanly
+      fire(window, "pointerup", { isPrimary: true, pointerId: 7, pointerType: "touch", clientX: 300, clientY: 120 });
+      expect(btn.element.hasAttribute("data-pressed")).toBe(false);
+      expect(btn.element.style.translate).toBe("0.00px 0.00px");
+
+      // Touch-tap + drag on slider updates value directly from clientX (fixes iOS Safari & Android touch scrubbing)
+      fire(slider.input, "pointerdown", { isPrimary: true, button: 0, pointerId: 9, pointerType: "touch", clientX: 118, clientY: 20 });
+      expect(slider.getValue()).toBe(50);
+      fire(slider.input, "pointermove", { isPrimary: true, pointerId: 9, pointerType: "touch", clientX: 168, clientY: 20 });
+      expect(slider.getValue()).toBe(75);
+      fire(slider.input, "pointerup", { isPrimary: true, pointerId: 9, pointerType: "touch", clientX: 168, clientY: 20 });
+    } finally {
+      btn.destroy();
+      slider.destroy();
+      btn.element.remove();
+      slider.element.remove();
+      setAccessibilityModes({ reduceMotion: false });
+    }
+  });
 });

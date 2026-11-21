@@ -206,7 +206,7 @@
   font: inherit;
   font-size: 14px;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -322,7 +322,7 @@
   display: inline-flex;
   padding: var(--lg-tab-inset);
   border-radius: calc(var(--lg-tab-height) / 2 + var(--lg-tab-inset));
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -577,7 +577,7 @@
   position: relative;
   display: inline-flex;
   border-radius: calc(var(--lg-tab-height) / 2);
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -749,7 +749,7 @@
   border-radius: 999px;
   background: none;
   cursor: pointer;
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -823,6 +823,8 @@
   position: relative;
   width: 100%;
   height: 40px;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 .lg-slider-bed {
@@ -885,7 +887,7 @@
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
 

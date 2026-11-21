@@ -19,7 +19,6 @@ import {
 } from "../core";
 
 export const HELD_MS = 150;
-const isHeld = (startedAt: number, moved: boolean) => moved || performance.now() - startedAt >= HELD_MS;
 const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
 const clampRange = (value: number, min: number, max: number) => (value < min ? min : value > max ? max : value);
 
@@ -295,13 +294,7 @@ export function createSwitch(options: SwitchOptions): SwitchHandle {
   const onMove = (event: PointerEvent) => {
     if (event.pointerId !== gesture?.id) return;
     const dx = event.clientX - gesture.x;
-    const dy = Math.abs(event.clientY - gesture.y);
-    if (!isHeld(gesture.at, gesture.moved) && dy > 10 && dy > Math.abs(dx) + 4) {
-      ignoreClick = true;
-      settle();
-      return;
-    }
-    if (!gesture.moved && Math.abs(dx) < 4) return;
+    if (!gesture.moved && Math.abs(dx) < 3) return;
     gesture.moved = true;
     const value = gesture.from + dx / SWITCH_TRAVEL;
     const overshoot = value < 0 ? value : value > 1 ? value - 1 : 0;
@@ -320,12 +313,12 @@ export function createSwitch(options: SwitchOptions): SwitchHandle {
     ignoreClick = true;
     const { from, x: startX, moved, box } = gesture;
     const value = from + (event.clientX - startX) / SWITCH_TRAVEL;
-    const near = event.clientY >= box.top - 24 && event.clientY <= box.bottom + 24;
+    const near = event.clientY >= box.top - 32 && event.clientY <= box.bottom + 32;
     settle(moved ? value > 0.5 : near ? !checked : undefined);
   };
 
   const onTouchMove = (event: TouchEvent) => {
-    if (gesture && event.cancelable && isHeld(gesture.at, gesture.moved)) event.preventDefault();
+    if (gesture && event.cancelable) event.preventDefault();
   };
 
   const onCancel = () => {
@@ -455,10 +448,62 @@ export function createSlider(options: SliderOptions): SliderHandle {
   });
   liftSpring.paint();
 
-  const hold = () => {
-    if (!input.disabled) liftSpring.set(1);
+  let dragPointerId: number | null = null;
+
+  const setFromClientX = (clientX: number) => {
+    const rect = input.getBoundingClientRect();
+    const usable = Math.max(1, rect.width - 36);
+    const ratio = clamp01((clientX - (rect.left + 18)) / usable);
+    const raw = min + ratio * (max - min);
+    const quantized = step > 0 ? Math.round((raw - min) / step) * step + min : raw;
+    const precision = step > 0 && !Number.isInteger(step) ? Math.max(0, String(step).split(".")[1]?.length ?? 2) : 0;
+    const next = clampRange(Number(quantized.toFixed(precision)), min, max);
+    if (next === value) return;
+    if (step >= 5) hapticTap(4);
+    value = next;
+    input.value = String(value);
+    updateProgress(value);
+    options.onInput?.(value);
   };
-  const release = () => liftSpring.set(0);
+
+  const hold = (ev: PointerEvent) => {
+    if (input.disabled || !ev.isPrimary || ev.button !== 0) return;
+    dragPointerId = ev.pointerId;
+    try {
+      input.setPointerCapture?.(ev.pointerId);
+    } catch {
+      // Ignore synthetic events without active pointer
+    }
+    liftSpring.set(1);
+    if (ev.pointerType !== "mouse") {
+      ev.preventDefault();
+      setFromClientX(ev.clientX);
+    }
+  };
+
+  const onMove = (ev: PointerEvent) => {
+    if (dragPointerId === null || ev.pointerId !== dragPointerId) return;
+    if (ev.pointerType !== "mouse") {
+      setFromClientX(ev.clientX);
+    }
+  };
+
+  const onTouchMove = (ev: TouchEvent) => {
+    if (dragPointerId !== null && ev.cancelable) ev.preventDefault();
+  };
+
+  const release = (ev?: Event) => {
+    if (ev && "pointerId" in ev && dragPointerId !== null && (ev as PointerEvent).pointerId !== dragPointerId) return;
+    if (dragPointerId !== null && input.hasPointerCapture?.(dragPointerId)) {
+      try {
+        input.releasePointerCapture(dragPointerId);
+      } catch {
+        // Ignore if already released
+      }
+    }
+    dragPointerId = null;
+    liftSpring.set(0);
+  };
   const ends = ["pointerup", "pointercancel", "lostpointercapture", "blur"] as const;
 
   const onInputEvent = () => {
@@ -470,6 +515,8 @@ export function createSlider(options: SliderOptions): SliderHandle {
   };
 
   input.addEventListener("pointerdown", hold);
+  input.addEventListener("pointermove", onMove);
+  input.addEventListener("touchmove", onTouchMove, { passive: false });
   ends.forEach((t) => input.addEventListener(t, release));
   window.addEventListener("pointerup", release);
   window.addEventListener("pointercancel", release);
@@ -496,6 +543,8 @@ export function createSlider(options: SliderOptions): SliderHandle {
       liftSpring.stop();
       lens.destroy();
       input.removeEventListener("pointerdown", hold);
+      input.removeEventListener("pointermove", onMove);
+      input.removeEventListener("touchmove", onTouchMove);
       ends.forEach((t) => input.removeEventListener(t, release));
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
@@ -778,6 +827,11 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
       box,
       at: performance.now(),
     };
+    try {
+      bar.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Ignore synthetic events
+    }
     suppressClick = false;
     bar.dataset.lifted = "";
     bar.dataset.refracting = "";
@@ -790,9 +844,8 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
 
   const onMove = (event: PointerEvent) => {
     if (event.pointerId !== gesture?.id) return;
-    if (!gesture.moved && Math.abs(event.clientX - gesture.x) > 6) {
+    if (!gesture.moved && Math.abs(event.clientX - gesture.x) > 4) {
       gesture.moved = true;
-      bar.setPointerCapture?.(event.pointerId);
     }
     if (gesture.moved) move(position(event), true);
     light(event, gesture.box);
@@ -803,7 +856,7 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
     if (event.type === "lostpointercapture" && event.target !== bar) return;
     const idx = Math.round(position(event) / Math.max(1, slot));
     const { moved, box } = release()!;
-    const near = event.clientY >= box.top - 24 && event.clientY <= box.bottom + 24;
+    const near = event.clientY >= box.top - 32 && event.clientY <= box.bottom + 32;
     if (event.type === "pointerup" && (moved || near)) {
       suppressClick = true;
       setActiveIndex(idx, false, true);
@@ -814,7 +867,7 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
   };
 
   const onTouchMove = (event: TouchEvent) => {
-    if (gesture && event.cancelable && isHeld(gesture.at, gesture.moved)) event.preventDefault();
+    if (gesture && event.cancelable) event.preventDefault();
   };
 
   const onClick = (event: MouseEvent) => {
@@ -1223,8 +1276,13 @@ export function createMenu(options: MenuOptions): MenuHandle {
     if (opened && !root.contains(ev.target as Node)) close(false);
   };
 
+  const onCardTouchMove = (ev: TouchEvent) => {
+    if (gesture && ev.cancelable) ev.preventDefault();
+  };
+
   card.addEventListener("pointerdown", onDown);
   card.addEventListener("pointermove", onMove);
+  card.addEventListener("touchmove", onCardTouchMove, { passive: false });
   card.addEventListener("pointerleave", (e) => {
     if (!gesture && e.pointerType === "mouse") highlight(null);
   });
@@ -1796,8 +1854,13 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
     glowSpring.set(0);
   };
 
+  const onDropletTouchMove = (ev: TouchEvent) => {
+    if ((dragState || touchStrength > 0.01) && ev.cancelable) ev.preventDefault();
+  };
+
   root.addEventListener("pointerdown", onDown);
   root.addEventListener("pointermove", onMove);
+  root.addEventListener("touchmove", onDropletTouchMove, { passive: false });
   root.addEventListener("pointerup", onEnd);
   root.addEventListener("pointercancel", onEnd);
 
@@ -1858,6 +1921,7 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       root.removeEventListener("pointerdown", onDown);
       root.removeEventListener("pointermove", onMove);
+      root.removeEventListener("touchmove", onDropletTouchMove);
       root.removeEventListener("pointerup", onEnd);
       root.removeEventListener("pointercancel", onEnd);
       if (gl) {
