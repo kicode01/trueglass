@@ -1275,6 +1275,24 @@
   }
 }
 
+@media (max-width: 380px) {
+  .lg-tab-bar[data-icons] {
+    --lg-tab-width: 58px;
+    --lg-tab-height: 46px;
+    --lg-lens-grow-x: 14px;
+    --lg-lens-grow-y: 10px;
+  }
+
+  .lg-tab-icon > svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .lg-segmented {
+    --lg-tab-width: 66px;
+  }
+}
+
 /* Graceful surface fallback for legacy browsers or Android WebViews without backdrop-filter */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :where(:root, [data-theme="light"]) {
