@@ -1,3 +1,4 @@
+import { parseCssRgba } from "./color";
 import { createDrawnLens, drawsLens } from "./drawn";
 import {
   createLens,
@@ -124,19 +125,8 @@ export function rimMap(
 }
 
 function parseColour(context: CanvasRenderingContext2D, colour: string): Colour {
-  context.fillStyle = "#0000";
-  context.fillStyle = colour;
-  const value = String(context.fillStyle);
-  if (value.startsWith("#")) {
-    const [r, g, b] = [1, 3, 5].map((at) => parseInt(value.slice(at, at + 2), 16));
-    return [r!, g!, b!, 1];
-  }
-  if (value.startsWith("color(")) {
-    const [r = 0, g = 0, b = 0, a = 1] = (value.match(/-?[\d.]+/g) ?? []).map(Number);
-    return [Math.round(clamp(r, 0, 1) * 255), Math.round(clamp(g, 0, 1) * 255), Math.round(clamp(b, 0, 1) * 255), clamp(a, 0, 1)];
-  }
-  const [r = 0, g = 0, b = 0, a = 1] = (value.match(/[\d.]+/g) ?? []).map(Number);
-  return [r, g, b, a];
+  const [r, g, b, a] = parseCssRgba(colour, context);
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), a];
 }
 
 const rims = new Map<string, string>();

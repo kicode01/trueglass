@@ -20,6 +20,7 @@ import {
   isSamsungInternet,
   lensField,
   lensMap,
+  parseCssRgba,
   prefersReducedMotion,
   recordFrameTime,
   refractsBackdrop,
@@ -774,5 +775,62 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
       row.remove();
       setAccessibilityModes({ reduceMotion: false });
     }
+  });
+
+  it("parses CSS Color 3 & 4 values including oklab/oklch/color(srgb) mid-transition strings without black flashes", () => {
+    // Classic hex, rgb/rgba, and transparent
+    expect(parseCssRgba("transparent")).toEqual([0, 0, 0, 0]);
+    expect(parseCssRgba("#ffffff")).toEqual([1, 1, 1, 1]);
+    const [rr, rg, rb, ra] = parseCssRgba("rgba(40, 40, 40, 0.62)");
+    expect(rr).toBeCloseTo(40 / 255, 4);
+    expect(rg).toBeCloseTo(40 / 255, 4);
+    expect(rb).toBeCloseTo(40 / 255, 4);
+    expect(ra).toBeCloseTo(0.62, 4);
+
+    // CSS Color 4 color(srgb ...) including scientific notation
+    const [sr, sg, sb, sa] = parseCssRgba("color(srgb 1 0.5 1.2e-7 / 0.61)");
+    expect(sr).toBeCloseTo(1, 4);
+    expect(sg).toBeCloseTo(0.5, 4);
+    expect(sb).toBeCloseTo(0, 4);
+    expect(sa).toBeCloseTo(0.61, 4);
+
+    // Mid-transition oklab(...) produced by transitioning color-mix(in srgb, ...) in Chromium/WebKit/Firefox
+    const [wr, wg, wb, wa] = parseCssRgba("oklab(1 0 0 / 0.6)");
+    expect(wr).toBeCloseTo(1, 3);
+    expect(wg).toBeCloseTo(1, 3);
+    expect(wb).toBeCloseTo(1, 3);
+    expect(wa).toBeCloseTo(0.6, 3);
+
+    const [mr, mg, mb, ma] = parseCssRgba("oklab(0.75 -1.2e-8 3.4e-9 / 0.61)");
+    expect(mr).toBeGreaterThan(0.65);
+    expect(mg).toBeGreaterThan(0.65);
+    expect(mb).toBeGreaterThan(0.65);
+    expect(ma).toBeCloseTo(0.61, 4);
+
+    const [dr, dg, db, da] = parseCssRgba("oklab(0.27685 0 0 / 0.62)");
+    expect(dr).toBeCloseTo(40 / 255, 2);
+    expect(dg).toBeCloseTo(40 / 255, 2);
+    expect(db).toBeCloseTo(40 / 255, 2);
+    expect(da).toBeCloseTo(0.62, 4);
+
+    // oklch(...) with percentage lightness and angle units
+    const [lr, lg, lb, la] = parseCssRgba("oklch(100% 0 none / 60%)");
+    expect(lr).toBeCloseTo(1, 3);
+    expect(lg).toBeCloseTo(1, 3);
+    expect(lb).toBeCloseTo(1, 3);
+    expect(la).toBeCloseTo(0.6, 3);
+
+    // Non-sRGB color(...) spaces delegate to the canvas rasterizer instead of misreading "3" from "display-p3"
+    const fakeProbe = {
+      fillStyle: "#0000",
+      clearRect: () => {},
+      fillRect: () => {},
+      getImageData: () => ({ data: new Uint8ClampedArray([255, 128, 0, 153]) }),
+    } as unknown as CanvasRenderingContext2D;
+    const [pr, pg, pb, pa] = parseCssRgba("color(display-p3 1 0.5 0 / 0.6)", fakeProbe);
+    expect(pr).toBeCloseTo(1, 2);
+    expect(pg).toBeCloseTo(128 / 255, 2);
+    expect(pb).toBeCloseTo(0, 2);
+    expect(pa).toBeCloseTo(153 / 255, 2);
   });
 });

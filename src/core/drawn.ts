@@ -1,3 +1,4 @@
+import { parseCssRgba } from "./color";
 import {
   getOpticalDpr,
   isMobileDevice,
@@ -502,11 +503,11 @@ function getScene(source: HTMLElement): Scene {
   };
   const markTransition = () => {
     made.stale = true;
-    made.transitionUntil = (typeof performance !== "undefined" ? performance.now() : 0) + 340;
+    const until = (typeof performance !== "undefined" ? performance.now() : 0) + 380;
+    if (until > made.transitionUntil) made.transitionUntil = until;
     wakeTick();
   };
   const onTransitionEnd = () => {
-    made.transitionUntil = 0;
     mark();
   };
   const observer = new MutationObserver((records) => {
@@ -740,22 +741,6 @@ function ensureTick(): void {
 
 const fieldCache = new Map<string, ReturnType<typeof lensField>>();
 
-function parseCssColour(pen: CanvasRenderingContext2D, colour: string): [number, number, number, number] {
-  pen.fillStyle = "#0000";
-  pen.fillStyle = colour;
-  const value = String(pen.fillStyle);
-  if (value.startsWith("#")) {
-    const [r, g, b] = [1, 3, 5].map((at) => parseInt(value.slice(at, at + 2), 16) / 255);
-    return [r!, g!, b!, 1];
-  }
-  if (value.startsWith("color(")) {
-    const [r = 0, g = 0, b = 0, a = 1] = (value.match(/-?[\d.]+/g) ?? []).map(Number);
-    return [clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1), clamp(a, 0, 1)];
-  }
-  const [r = 0, g = 0, b = 0, a = 1] = (value.match(/[\d.]+/g) ?? []).map(Number);
-  return [r / 255, g / 255, b / 255, a];
-}
-
 export function createDrawnLens(glass: HTMLElement, content: HTMLElement, options: LensOptions): Lens {
   const made = getScene(content);
   const layer = document.createElement("i");
@@ -791,7 +776,8 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
     if (!shape) return;
     ({ reach, dispersion } = tuningOf(style, shape, options));
     const frost = parseFloat(style.getPropertyValue("--lg-blur"));
-    blur = Number.isFinite(frost) ? frost : 3;
+    const tintAmt = parseFloat(style.getPropertyValue("--lg-tint-amount"));
+    blur = (Number.isFinite(frost) ? frost : 3) + (Number.isFinite(tintAmt) ? Math.max(0, tintAmt) * 10 : 0);
     const density = getOpticalDpr("lens");
     const key = [shape.width, shape.height, shape.radius, density, JSON.stringify(options)].join("|");
     if (key !== fieldKey) releaseField();
@@ -952,7 +938,8 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       gl.useProgram(on.finish.program);
       gl.bindTexture(gl.TEXTURE_2D, seen);
       gl.uniform1f(on.finish.at.saturation!, 1 + 0.5 * mat);
-      gl.uniform4f(on.finish.at.tint!, ...parseCssColour(pen, tint));
+      const [tr, tg, tb, ta] = parseCssRgba(tint, pen);
+      gl.uniform4f(on.finish.at.tint!, tr, tg, tb, ta);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       if (canvas.width !== width || canvas.height !== height) {
@@ -964,6 +951,11 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
     },
   };
 
+  const onGlassTransition = () => {
+    last = "";
+    wakeTick();
+  };
+
   return {
     setActive(next) {
       if (next === active) return;
@@ -972,12 +964,18 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         read();
         glass.prepend(layer);
         glass.setAttribute("data-drawn", "");
+        glass.addEventListener("transitionrun", onGlassTransition);
+        glass.addEventListener("transitionstart", onGlassTransition);
+        glass.addEventListener("transitionend", onGlassTransition);
         made.lenses.add(drawn);
         drawnLenses.add(drawn);
         ensureTick();
       } else {
         layer.remove();
         glass.removeAttribute("data-drawn");
+        glass.removeEventListener("transitionrun", onGlassTransition);
+        glass.removeEventListener("transitionstart", onGlassTransition);
+        glass.removeEventListener("transitionend", onGlassTransition);
         made.lenses.delete(drawn);
         drawnLenses.delete(drawn);
       }

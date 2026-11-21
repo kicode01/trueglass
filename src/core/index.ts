@@ -1,4 +1,5 @@
 export * from "./spring";
+export * from "./color";
 export * from "./optics";
 export * from "./svg";
 export * from "./lens";
