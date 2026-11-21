@@ -1,6 +1,7 @@
 import {
   analyzeBackdropPixels,
   attachAdaptiveBackdropSensor,
+  attachGlassFusionGroup,
   attachVirtualTiltLight,
   concentricRadius,
   isMobileDevice,
@@ -430,6 +431,7 @@ function mountApp(): void {
   ghBtn.element.classList.add("topbar-btn", "topbar-gh-btn");
 
   topbarActions.append(npmBtn.element, ghBtn.element);
+  attachGlassFusionGroup(topbarActions, { smoothK: 18, threshold: 7.5 });
   topbarInner.append(logoMenu.element, navTabBar.element, topbarActions);
   topbar.appendChild(topbarInner);
   root.appendChild(topbar);
@@ -612,6 +614,7 @@ function mountApp(): void {
   const stageShare = createButton({ iconHtml: iconSvg(ICON_PATHS.share), iconOnly: true, ariaLabel: "Share" });
   const stageContinue = createButton({ label: "Continue" });
   stageRow.append(stageShare.element, stageContinue.element);
+  attachGlassFusionGroup(stageRow, { smoothK: 20, threshold: 10.5 });
 
   const stageSlider = createSlider({ ariaLabel: "Volume", value: 60, className: "stage-slider" });
   const stageSearch = createSearchField({ placeholder: "Search", ariaLabel: "Search", className: "stage-search" });
@@ -1143,6 +1146,13 @@ function mountApp(): void {
   iconBtnSlot.appendChild(btnIconHandle.element);
   textBtnSlot.appendChild(btnTextHandle.element);
   btnDemo.append(iconBtnSlot, textBtnSlot, matTrigger.element);
+  let btnFusionEnabled = true;
+  const btnFusion = attachGlassFusionGroup(btnDemo, {
+    enabled: btnFusionEnabled,
+    smoothK: 20,
+    threshold: 10.5,
+    selector: ".lg-button",
+  });
   btnStage.append(btnBackdrop, btnDemo);
   btnBackdrop.addEventListener("load", () => {
     btnIconHandle.refit();
@@ -1150,13 +1160,39 @@ function mountApp(): void {
     matTrigger.refit();
   });
 
-  const btnCode = codeBlock(`<Button icon={<ShareIcon />} aria-label="Share" />\n<Button>Continue</Button>`);
+  const btnCode = codeBlock("");
   const updateButtonCode = (iconName: string, label: string) => {
     const props = `${currentBtnVariant === "filled" ? ' variant="filled"' : ""}${currentBtnMaterial !== "regular" ? ` material="${currentBtnMaterial}"` : ""}${currentBtnScrim ? " dimmingScrim" : ""}${currentBtnDestructive ? " destructive" : ""}${currentBtnTint ? ` tint="${currentBtnTint}"` : ""}`;
-    btnCode.set(`<Button icon={<${iconName} />} aria-label="${label}"${props} />\n<Button${props}>${label}</Button>`);
+    if (btnFusionEnabled) {
+      btnCode.set(
+        `<ButtonGroup fusion>\n  <Button icon={<${iconName} />} aria-label="${label}"${props} />\n  <Button${props}>${label}</Button>\n</ButtonGroup>`,
+      );
+    } else {
+      btnCode.set(`<Button icon={<${iconName} />} aria-label="${label}"${props} />\n<Button${props}>${label}</Button>`);
+    }
   };
   let lastIconName = "ShareIcon";
   let lastLabel = "Continue";
+  updateButtonCode(lastIconName, lastLabel);
+
+  const btnFusionRow = document.createElement("div");
+  btnFusionRow.className = "setting";
+  btnFusionRow.style.marginTop = "10px";
+  const btnFusionLabel = document.createElement("span");
+  btnFusionLabel.textContent = "Droplet Fusion";
+  const btnFusionState = document.createElement("span");
+  btnFusionState.textContent = "On";
+  const btnFusionSwitch = createSwitch({
+    ariaLabel: "Button group droplet fusion",
+    checked: true,
+    onChange(on) {
+      btnFusionEnabled = on;
+      btnFusionState.textContent = on ? "On" : "Off";
+      btnFusion.setEnabled(on);
+      updateButtonCode(lastIconName, lastLabel);
+    },
+  });
+  btnFusionRow.append(btnFusionLabel, btnFusionSwitch.element, btnFusionState);
 
   const rebuildButtons = (opt: string) => {
     btnIconHandle.destroy();
@@ -1222,10 +1258,11 @@ function mountApp(): void {
 
   const buttonCard = studioCard(
     "Button",
-    "Rubber-band spring press, optical variants & materialize-by-bending",
+    "Rubber-band spring press, optical variants, opt-in droplet fusion & materialize-by-bending",
     btnStage,
     optionPills(["Glass", "Filled", "Tinted", "Tinted filled", "Destructive", "Destructive filled"], "Glass", rebuildButtons),
     materialPills,
+    btnFusionRow,
     btnCode.wrap,
   );
 

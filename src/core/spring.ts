@@ -21,8 +21,11 @@ const activityListeners = new Set<() => void>();
 let rafId = 0;
 let lastTime = 0;
 
-export function onSpringActivity(fn: () => void): void {
+export function onSpringActivity(fn: () => void): () => void {
   activityListeners.add(fn);
+  return () => {
+    activityListeners.delete(fn);
+  };
 }
 
 function notifyActivity(): void {

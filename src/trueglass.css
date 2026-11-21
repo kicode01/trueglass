@@ -1193,6 +1193,68 @@
   display: block;
 }
 
+/* ===== LIVE DOM DROPLET FUSION GROUP ===== */
+.lg-button-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-fusion-group] {
+  position: relative;
+}
+
+[data-fusion-group] .lg-glass {
+  position: relative;
+  z-index: 1;
+}
+
+.lg-fusion-layer {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 10px 26px rgb(0 0 0 / 0.36));
+}
+
+:where([data-theme="light"]) .lg-fusion-layer {
+  filter: drop-shadow(0 6px 18px rgb(0 0 0 / 0.14));
+}
+
+.lg-fusion-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--lg-fusion-bg, var(--lg-glass));
+  -webkit-backdrop-filter: blur(var(--lg-fusion-blur, 12px)) saturate(1.5);
+  backdrop-filter: blur(var(--lg-fusion-blur, 12px)) saturate(1.5);
+}
+
+.lg-fusion-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.lg-glass[data-fused] {
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  transition: color 220ms ease !important;
+}
+
+.lg-glass[data-fused]::before,
+.lg-glass[data-fused]::after,
+.lg-glass[data-fused] > .lg-drawn {
+  opacity: 0 !important;
+}
+
 /* ================= MATERIAL VARIANTS ================= */
 
 .lg-glass[data-material="clear"] {

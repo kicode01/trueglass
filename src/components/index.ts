@@ -1,4 +1,5 @@
 import {
+  attachGlassFusionGroup,
   attachInteractivePress,
   attachRefraction,
   createBackdropLens,
@@ -13,6 +14,8 @@ import {
   sminCubic,
   sminCubicGradient,
   superellipseSDF,
+  type FusionGroupHandle,
+  type FusionGroupOptions,
   type LensOptions,
   type RefractionHandle,
   type Spring,
@@ -156,6 +159,64 @@ export function createButton(options: ButtonOptions): GlassHandle<HTMLButtonElem
     destroy() {
       stopPress();
       refraction.destroy();
+    },
+  };
+}
+
+export interface ButtonGroupOptions {
+  buttons: ButtonOptions[];
+  /** Opt-in C2 sminCubic DOM droplet fusion when adjacent buttons are pulled together (default: false). */
+  fusion?: boolean | FusionGroupOptions;
+  /** Gap between buttons in CSS px (default: 10). */
+  gap?: number;
+  className?: string;
+  ariaLabel?: string;
+}
+
+export interface ButtonGroupHandle {
+  element: HTMLDivElement;
+  buttons: GlassHandle<HTMLButtonElement>[];
+  setFusion(enabled: boolean): void;
+  isFusionEnabled(): boolean;
+  refit(): void;
+  destroy(): void;
+}
+
+/** 2b. Grouped Fluid Glass Buttons with optional C2 sminCubic DOM droplet fusion. */
+export function createButtonGroup(options: ButtonGroupOptions): ButtonGroupHandle {
+  const group = makeEl("div", `lg-button-group ${options.className ?? ""}`.trim(), {
+    role: "group",
+  });
+  if (options.ariaLabel) group.setAttribute("aria-label", options.ariaLabel);
+  if (options.gap !== undefined) group.style.gap = `${options.gap}px`;
+
+  const buttons = options.buttons.map((cfg) => createButton(cfg));
+  for (const b of buttons) group.appendChild(b.element);
+
+  const fusionOpts: FusionGroupOptions =
+    typeof options.fusion === "object"
+      ? { ...options.fusion, enabled: options.fusion.enabled ?? true }
+      : { enabled: Boolean(options.fusion) };
+
+  const fusion: FusionGroupHandle = attachGlassFusionGroup(group, {
+    selector: ":scope > .lg-button",
+    ...fusionOpts,
+  });
+
+  return {
+    element: group,
+    buttons,
+    setFusion(enabled: boolean) {
+      fusion.setEnabled(enabled);
+    },
+    isFusionEnabled: () => fusion.isEnabled(),
+    refit() {
+      for (const b of buttons) b.refit();
+      fusion.update();
+    },
+    destroy() {
+      fusion.destroy();
+      for (const b of buttons) b.destroy();
     },
   };
 }

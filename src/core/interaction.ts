@@ -94,7 +94,8 @@ export function attachInteractivePress(
 
     const rawDx = ev.clientX - activePointer.startX;
     const rawDy = ev.clientY - activePointer.startY;
-    if (Math.hypot(rawDx, rawDy) > 40) activePointer.pulledFar = true;
+    const pullThreshold = element.closest("[data-fusion-group]") ? 20 : 40;
+    if (Math.hypot(rawDx, rawDy) > pullThreshold) activePointer.pulledFar = true;
 
     const w = Math.max(1, box.width);
     const h = Math.max(1, box.height);
@@ -112,8 +113,9 @@ export function attachInteractivePress(
     const nx = dx / len;
     const ny = dy / len;
     const rubber = 1 - 1 / (1 + len / h / (5 * aspect));
+    const inFusion = Boolean(element.closest("[data-fusion-group]"));
     const stretchGain = isTouch ? 9 : 6;
-    const pullTravel = isTouch ? 13 : 8;
+    const pullTravel = inFusion ? (isTouch ? 20 : 16) : isTouch ? 13 : 8;
     const stretch = 1 + (stretchGain / h) * rubber * Math.abs(Math.abs(nx) - Math.abs(ny));
     const horizontal = Math.abs(nx) > Math.abs(ny);
 
@@ -159,13 +161,14 @@ export function attachInteractivePress(
         }
       }
       if (ev && ev.type === "pointerup" && old.pulledFar) {
+        const inFusion = Boolean(element.closest("[data-fusion-group]"));
         const slack = 28;
         const inside =
           ev.clientX >= old.box.left - slack &&
           ev.clientX <= old.box.right + slack &&
           ev.clientY >= old.box.top - slack &&
           ev.clientY <= old.box.bottom + slack;
-        if (!inside) suppressClickUntil = performance.now() + 400;
+        if (inFusion || !inside) suppressClickUntil = performance.now() + 400;
       }
     }
     window.removeEventListener("pointermove", onMove);

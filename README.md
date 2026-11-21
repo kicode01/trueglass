@@ -240,6 +240,7 @@ All component factories are exported from `trueglass` and `trueglass/components`
 | **`createGlass`** | Universal refracting container with auto `[data-fluid-backdrop]` binding & materialize transitions | `className`, `tag`, `interactive`, `material` (`regular \| clear \| identity`), `dimmingScrim`, `materializeOnMount` |
 | **`createGlassContainer`** | Single-pass WebGL2 droplet fusion container (`sminCubic` liquid necks + cross-sibling glow) | `childrenVariants`, `backdropSrc`, `gap`, `smoothK`, `tint`, `ariaLabel`, `onGapChange` |
 | **`createButton`** | Pill glass or filled button with rubber-band spring press, contact glow & materialize-by-bending | `label`, `iconHtml`, `ariaLabel`, `variant` (`glass \| filled`), `material`, `dimmingScrim`, `destructive`, `tint`, `iconOnly`, `disabled`, `onClick` |
+| **`createButtonGroup`** | Groups adjacent glass buttons with opt-in live $C^2$ `sminCubic` DOM droplet fusion when pulled together | `buttons`, `fusion` (`boolean \| FusionGroupOptions`), `gap`, `ariaLabel`, `className` |
 | **`createTabBar`** | Capsule navigation bar with press-and-drag magnifying droplet lens & chromatic edge dispersion | `items` (`{ value, label, iconHtml? }[]`), `value`, `ariaLabel`, `className`, `onChange` |
 | **`createSegmentedControl`** | Synchronized 3-layer ink lens segmented selector with spring sliding thumb | `items`, `value`, `ariaLabel`, `className`, `onChange` |
 | **`createSwitch`** | Dual-bed refraction toggle switch with spring lift, drag scrubbing & bounded overshoot | `checked`, `disabled`, `ariaLabel`, `className`, `onChange` |
@@ -263,7 +264,8 @@ Build your own custom glass components using the underlying optical engine direc
 | [optics.ts](src/core/optics.ts) | `superellipseSDF`, `squircleSDF`, `sminCubic`, `concentricRadius`, `computeBezelProfile`, `generateOpticalMaps` | $G^2$ $L^4$ superellipse SDFs, $C^2$ cubic smooth-min union, hardware concentric radius solver, and Snell bezel lookup tables. |
 | [spring.ts](src/core/spring.ts) | `createSpring`, `advanceSpringState`, `isReducedMotion` | Closed-form 2nd-order harmonic spring solver (60–240 Hz, zero Euler drift). |
 | [adaptive-sensor.ts](src/core/adaptive-sensor.ts) | `analyzeBackdropPixels`, `attachAdaptiveBackdropSensor` | Samples perceptual luminance ($Y$), horizontal edge variance ($\sigma_Y$), and ambient color with hysteresis polarity switching. |
-| [interaction.ts](src/core/interaction.ts) | `attachInteractivePress`, `attachVirtualTiltLight`, `setAccessibilityModes`, `getAccessibilityModes` | Anisotropic rubber-band press physics, pointer/gyroscope specular rim tilt, and global accessibility toggles. |
+| [interaction.ts](src/core/interaction.ts) | `attachInteractivePress`, `attachVirtualTiltLight`, `hapticTap`, `requestTiltPermission`, `setAccessibilityModes`, `getAccessibilityModes` | Anisotropic rubber-band press physics, pointer/gyroscope specular rim tilt, Android micro-haptics, and global accessibility toggles. |
+| [fusion.ts](src/core/fusion.ts) | `attachGlassFusionGroup`, `buildFusionPath` | Opt-in live $C^2$ `sminCubic` DOM droplet fusion with unified `backdrop-filter`, inner Fresnel rim, and cross-sibling touch glow. |
 | [webgl-stage.ts](src/core/webgl-stage.ts) | `drawCrossSectionRays`, `createWebGLBackdropLens`, `readElementRegionPixels` | Interactive Snell's law cross-section ray tracer and standalone WebGL2 lens stage. |
 
 ---

@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   advanceSpringState,
   analyzeBackdropPixels,
+  attachGlassFusionGroup,
   attachVirtualTiltLight,
   benchmarkOptics,
   boxUnits,
+  buildFusionPath,
   computeBezelProfile,
   concentricRadius,
   createSpring,
@@ -33,6 +35,7 @@ import {
 } from "../src/core";
 import {
   createButton,
+  createButtonGroup,
   createGlass,
   createGlassContainer,
   createInput,
@@ -689,6 +692,86 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
       slider.destroy();
       btn.element.remove();
       slider.element.remove();
+      setAccessibilityModes({ reduceMotion: false });
+    }
+  });
+
+  it("extracts merged C2 sminCubic SVG contours and fuses adjacent DOM buttons when pulled together", () => {
+    // Two distant pills produce two separate closed SVG loops ("M...Z M...Z")
+    const separated = buildFusionPath(
+      [
+        { cx: 50, cy: 40, hw: 24, hh: 18, r: 18 },
+        { cx: 190, cy: 40, hw: 24, hh: 18, r: 18 },
+      ],
+      240,
+      80,
+      24,
+    );
+    expect((separated.match(/Z/g) ?? []).length).toBe(2);
+
+    // Two adjacent pills within smoothK merge into ONE single continuous liquid SVG loop
+    const fused = buildFusionPath(
+      [
+        { cx: 92, cy: 40, hw: 34, hh: 18, r: 18 },
+        { cx: 164, cy: 40, hw: 34, hh: 18, r: 18 },
+      ],
+      260,
+      80,
+      26,
+    );
+    expect((fused.match(/Z/g) ?? []).length).toBe(1);
+
+    // Live DOM fusion group activates data-fusing & data-fused when a sibling button is pressed near its neighbor
+    setAccessibilityModes({ reduceMotion: true });
+    const row = document.createElement("div");
+    const a = createButton({ label: "npm v1.0.3", bendsBackdrop: false });
+    const b = createButton({ label: "GitHub", bendsBackdrop: false });
+    row.append(a.element, b.element);
+    document.body.appendChild(row);
+
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 220, 40));
+    vi.spyOn(a.element, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 108, 40));
+    vi.spyOn(b.element, "getBoundingClientRect").mockReturnValue(new DOMRect(114, 0, 106, 40));
+
+    const group = attachGlassFusionGroup(row, { smoothK: 26, threshold: 14 });
+    try {
+      expect(row.hasAttribute("data-fusion-group")).toBe(true);
+      expect(row.hasAttribute("data-fusing")).toBe(false);
+
+      a.element.setAttribute("data-pressed", "");
+      group.update();
+      expect(row.hasAttribute("data-fusing")).toBe(true);
+      expect(a.element.hasAttribute("data-fused")).toBe(true);
+      expect(b.element.hasAttribute("data-fused")).toBe(true);
+
+      // Disabling fusion clears fused state and removes data-fusion-group cleanly
+      group.setEnabled(false);
+      expect(group.isEnabled()).toBe(false);
+      expect(row.hasAttribute("data-fusion-group")).toBe(false);
+      expect(row.hasAttribute("data-fusing")).toBe(false);
+      expect(a.element.hasAttribute("data-fused")).toBe(false);
+
+      group.setEnabled(true);
+      expect(group.isEnabled()).toBe(true);
+      expect(row.hasAttribute("data-fusion-group")).toBe(true);
+
+      a.element.removeAttribute("data-pressed");
+      group.update();
+      expect(row.hasAttribute("data-fusing")).toBe(false);
+
+      // createButtonGroup makes DOM droplet fusion an explicit opt-in option
+      const optOff = createButtonGroup({ buttons: [{ label: "A" }, { label: "B" }] });
+      expect(optOff.isFusionEnabled()).toBe(false);
+      expect(optOff.element.hasAttribute("data-fusion-group")).toBe(false);
+      optOff.setFusion(true);
+      expect(optOff.isFusionEnabled()).toBe(true);
+      expect(optOff.element.hasAttribute("data-fusion-group")).toBe(true);
+      optOff.destroy();
+    } finally {
+      group.destroy();
+      a.destroy();
+      b.destroy();
+      row.remove();
       setAccessibilityModes({ reduceMotion: false });
     }
   });

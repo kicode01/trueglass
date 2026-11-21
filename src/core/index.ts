@@ -6,4 +6,5 @@ export * from "./drawn";
 export * from "./refraction";
 export * from "./adaptive-sensor";
 export * from "./interaction";
+export * from "./fusion";
 export * from "./webgl-stage";
