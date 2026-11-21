@@ -386,7 +386,7 @@ function mountApp(): void {
       })),
       { type: "separator" },
       {
-        label: "npm v1.0.2",
+        label: "npm v1.0.3",
         onSelect: () => window.open("https://www.npmjs.com/package/trueglass", "_blank", "noopener,noreferrer"),
       },
       {
@@ -414,7 +414,7 @@ function mountApp(): void {
   topbarActions.className = "topbar-actions";
 
   const npmBtn = createButton({
-    label: "npm v1.0.2",
+    label: "npm v1.0.3",
     bendsBackdrop: false,
     onClick: () => window.open("https://www.npmjs.com/package/trueglass", "_blank", "noopener,noreferrer"),
   });
@@ -648,9 +648,13 @@ function mountApp(): void {
   });
   let panState: { id: number; x: number; y: number; left: number; top: number } | null = null;
   scroller.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    if (!e.isPrimary || e.button !== 0) return;
     panState = { id: e.pointerId, x: e.clientX, y: e.clientY, left: scroller.scrollLeft, top: scroller.scrollTop };
-    scroller.setPointerCapture(e.pointerId);
+    try {
+      scroller.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore synthetic events
+    }
     scroller.dataset.dragging = "";
   });
   scroller.addEventListener("pointermove", (e) => {
@@ -658,13 +662,28 @@ function mountApp(): void {
     scroller.scrollLeft = panState.left - (e.clientX - panState.x);
     scroller.scrollTop = panState.top - (e.clientY - panState.y);
   });
+  scroller.addEventListener(
+    "touchmove",
+    (e) => {
+      if (panState && e.cancelable) e.preventDefault();
+    },
+    { passive: false },
+  );
   const endPan = (e: PointerEvent) => {
     if (e.pointerId !== panState?.id) return;
+    if (scroller.hasPointerCapture?.(e.pointerId)) {
+      try {
+        scroller.releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore if already released
+      }
+    }
     panState = null;
     delete scroller.dataset.dragging;
   };
   scroller.addEventListener("pointerup", endPan);
   scroller.addEventListener("pointercancel", endPan);
+  scroller.addEventListener("lostpointercapture", endPan);
 
   const heroStageSection = document.createElement("section");
   heroStageSection.className = "section hero-section";
@@ -779,29 +798,59 @@ function mountApp(): void {
     refitAllGlass();
   });
 
-  lensGlass.element.addEventListener("pointerdown", (e) => {
-    if (!e.isPrimary || e.button !== 0) return;
+  const startMag = (e: PointerEvent, snapToFinger: boolean) => {
+    if (!e.isPrimary || e.button !== 0 || magPointer) return;
     const rect = magnifierBox.getBoundingClientRect();
-    magPointer = { id: e.pointerId, dx: e.clientX - rect.left - magPos.x, dy: e.clientY - rect.top - magPos.y };
-    lensGlass.element.setPointerCapture(e.pointerId);
+    const localX = Math.min(rect.width, Math.max(0, e.clientX - rect.left));
+    const localY = Math.min(rect.height, Math.max(0, e.clientY - rect.top));
+    if (snapToFinger) {
+      magPos.x = localX;
+      magPos.y = localY;
+    }
+    magPointer = { id: e.pointerId, dx: localX - magPos.x, dy: localY - magPos.y };
+    try {
+      magnifierBox.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore synthetic events
+    }
     magGrabbed = true;
     wakeMag();
+  };
+  lensGlass.element.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    startMag(e, false);
   });
-  lensGlass.element.addEventListener("pointermove", (e) => {
+  magnifierBox.addEventListener("pointerdown", (e) => startMag(e, true));
+  magnifierBox.addEventListener("pointermove", (e) => {
     if (e.pointerId !== magPointer?.id) return;
     const rect = magnifierBox.getBoundingClientRect();
     magPos.x = Math.min(rect.width, Math.max(0, e.clientX - rect.left - magPointer.dx));
     magPos.y = Math.min(rect.height, Math.max(0, e.clientY - rect.top - magPointer.dy));
     wakeMag();
   });
+  magnifierBox.addEventListener(
+    "touchmove",
+    (e) => {
+      if (magPointer && e.cancelable) e.preventDefault();
+    },
+    { passive: false },
+  );
   const releaseMag = (e: PointerEvent) => {
     if (e.pointerId !== magPointer?.id) return;
+    if (magnifierBox.hasPointerCapture?.(e.pointerId)) {
+      try {
+        magnifierBox.releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore if already released
+      }
+    }
     magPointer = null;
     magGrabbed = false;
     wakeMag();
   };
-  lensGlass.element.addEventListener("pointerup", releaseMag);
-  lensGlass.element.addEventListener("pointercancel", releaseMag);
+  magnifierBox.addEventListener("pointerup", releaseMag);
+  magnifierBox.addEventListener("pointercancel", releaseMag);
+  magnifierBox.addEventListener("lostpointercapture", releaseMag);
 
   const opticsPanel = document.createElement("div");
   opticsPanel.className = "studio-panel";

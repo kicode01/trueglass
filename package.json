@@ -1,9 +1,9 @@
 {
   "name": "trueglass",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": false,
   "license": "MIT",
-  "description": "Zero-dependency physically-based TrueGlass optical engine and UI component suite for the web.",
+  "description": "True liquid glass for the web — zero-dependency optical refraction engine and UI component suite with Snell bezel bending, chromatic dispersion, droplet fusion, and adaptive contrast.",
   "type": "module",
   "main": "./dist-lib/index.js",
   "module": "./dist-lib/index.js",
@@ -42,15 +42,18 @@
   },
   "keywords": [
     "trueglass",
-    "true-glass",
+    "liquid-glass",
     "fluid-glass",
+    "glassmorphism",
+    "backdrop-filter",
     "refraction",
     "snell-law",
+    "chromatic-dispersion",
     "webgl2",
     "svg-filter",
     "squircle",
-    "superellipse",
     "ui-components",
+    "zero-dependency",
     "typescript"
   ],
   "scripts": {

@@ -5,124 +5,81 @@
 <h1 align="center">TrueGlass</h1>
 
 <p align="center">
-  <strong>Physically-Based Optical Glass Engine &amp; UI Component Suite for the Web</strong>
+  <strong>True Liquid Glass for the Web — Real Optical Refraction, Droplet Fusion &amp; Tactile UI Components</strong>
+</p>
+
+<p align="center">
+  Zero dependencies · Works with React, Next.js, Vue, Svelte, Astro &amp; Vanilla JS · Chrome, Safari, Firefox &amp; Mobile
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/trueglass"><img src="https://img.shields.io/npm/v/trueglass?style=flat-square&color=0088ff&label=npm" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/trueglass"><img src="https://img.shields.io/badge/dependencies-0-30d158?style=flat-square" alt="zero dependencies" /></a>
-  <a href="https://www.npmjs.com/package/trueglass"><img src="https://img.shields.io/badge/TypeScript-ES2022-3178c6?style=flat-square" alt="TypeScript ES2022" /></a>
+  <a href="https://www.npmjs.com/package/trueglass"><img src="https://img.shields.io/badge/gzipped%20core-~22%20kB-38bdf8?style=flat-square" alt="gzipped size" /></a>
   <a href="https://github.com/kicode01/trueglass/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" alt="MIT License" /></a>
-  <a href="https://trueglass.vercel.app"><img src="https://img.shields.io/badge/live%20studio-trueglass.vercel.app-38bdf8?style=flat-square" alt="Live Studio" /></a>
+  <a href="https://trueglass.vercel.app"><img src="https://img.shields.io/badge/live%20demo-trueglass.vercel.app-0a84ff?style=flat-square" alt="Live Demo" /></a>
 </p>
 
 <p align="center">
-  <a href="https://trueglass.vercel.app"><strong>Live Studio</strong></a> ·
-  <a href="https://www.npmjs.com/package/trueglass"><strong>npm Package</strong></a> ·
-  <a href="#studio-showcase"><strong>Showcase</strong></a> ·
-  <a href="#optical-architecture"><strong>Architecture</strong></a> ·
-  <a href="#installation"><strong>Installation</strong></a> ·
+  <a href="https://trueglass.vercel.app"><strong>Interactive Demo</strong></a> ·
+  <a href="#30-second-quick-start"><strong>Quick Start</strong></a> ·
+  <a href="#live-showcase"><strong>Showcase</strong></a> ·
   <a href="#ui-component-suite"><strong>Components</strong></a> ·
-  <a href="#headless-core-api"><strong>Core API</strong></a>
+  <a href="#headless-core-api"><strong>Core API</strong></a> ·
+  <a href="#under-the-hood"><strong>How It Works</strong></a>
 </p>
 
 <p align="center">
   <a href="https://trueglass.vercel.app">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/hero-showcase.png" alt="TrueGlass Live Optical Studio — refracted TabBar, Button, Slider, Switch, and SearchField over fluid wallpaper" width="100%" />
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/hero-showcase.png" alt="TrueGlass Live Optical Studio — Liquid Glass TabBar, Button, Slider, Switch, and SearchField refracting over wallpaper" width="100%" />
   </a>
 </p>
 
 ---
 
-## Why TrueGlass
+## What is TrueGlass?
 
-Standard CSS glassmorphism (`backdrop-filter: blur(...)`) treats glass as a flat, uniformly frosted rectangle. **TrueGlass** is a zero-dependency, strict TypeScript (`ES2022`) optical engine and UI suite that models the real physical behavior of curved optical glass:
+**TrueGlass** brings true **liquid glass** optics and tactile fluid physics to the open web — with **zero runtime dependencies** and full TypeScript support.
+
+Most glassmorphism libraries just slap `backdrop-filter: blur(12px)` onto a translucent rectangle. Real liquid glass behaves like a physical optical lens:
+
+- **Real Curved Edge Refraction** — Light, images, and text bend naturally around rounded squircle rims while the flat center stays crisp and readable.
+- **Subtle Prismatic Rainbow Edges** — High-curvature rims and lifted droplets split Red, Green, and Blue light just like real optical glass.
+- **Tactile Liquid Motion** — Buttons rubber-band when pressed, switches and tab bars lift into magnifying glass droplets when dragged, and menus morph smoothly out of their trigger button.
+- **Liquid Droplet Merging** — Place two glass pills close together inside a `GlassContainer` and they smoothly melt into one continuous liquid bridge.
+- **Dynamic Specular Rim Lighting** — Edges catch light dynamically as you tilt your phone or move your cursor — rendered purely on the GPU.
+- **Auto-Adapts to Any Background** — Scroll a glass bar from a bright photo or white page into dark mode and TrueGlass automatically flips text contrast and adjusts shadows so controls stay legible.
+- **Works Across Every Modern Browser** — Uses native GPU-accelerated SVG displacement in Chromium, automatically switches to a custom WebGL2 shader engine in Safari & Firefox, and degrades gracefully on older devices.
+- **Accessibility Built In** — One call toggles `Reduce Transparency`, `Increase Contrast`, and `Reduce Motion`.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/snell-bezel-diagram.svg" alt="Cross-section comparison of flat CSS backdrop-filter blur versus TrueGlass G2 superellipse Snell bezel refraction and Cauchy RGB chromatic dispersion" width="100%" />
+  <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/snell-bezel-diagram.svg" alt="Standard CSS backdrop-filter blur compared to TrueGlass curved bezel refraction and RGB dispersion" width="100%" />
 </p>
 
-- **Snell's Law Bezel Refraction** — Precomputed $G^2$ superellipse ($L^4$) corner normals and surface height profiles bend underlying pixels cleanly along curved glass rims while leaving flat interior centers distortion-free.
-- **Cauchy RGB Chromatic Dispersion** — Splits Red, Green, and Blue rays across separate refractive indices along high-curvature bezels and lifted droplet meniscuses.
-- **Dual-Engine Cross-Browser Pipeline** — Pairs an sRGB-locked packed-RG `<feDisplacementMap>` SVG filter graph in Chromium with a 3-stage WebGL2 rasterizer (`BEND → SOFTEN → FINISH`) for WebKit & Gecko, with off-screen viewport culling and background-tab idle pausing.
-- **Single-Pass $C^2$ Droplet Fusion** — Evaluates sibling glass controls inside a shared WebGL2 pass using cubic smooth-minimum (`sminCubic(d1, d2, k)`), producing continuous liquid necks and cross-sibling Gaussian touch illumination.
-- **Pure-GPU Dynamic Specular Rim Lighting** — Drives dual-lobe directional Fresnel rim highlights directly on the GPU via `--lg-light-angle` (`--lg-lx`, `--lg-ly`), paired with lazy pointer parallax and device-orientation tilt (`attachVirtualTiltLight`) with shortest-arc `±180°` seam unwrapping.
-- **Closed-Form 2nd-Order Harmonic Springs** — Analytical differential equation solver across underdamped, critically damped, and overdamped regimes at 60–240 Hz without Euler drift.
-- **Event-Driven Adaptive Luminance & Contrast Sensor** — Samples underlying scene luminance ($Y$), horizontal edge-contrast variance ($\sigma_Y$), and ambient chroma with hysteresis to automatically flip light/dark polarity, project ambient color spill onto large panels, and modulate grounding shadows.
-- **First-Class Accessibility Overrides** — Built-in `reduceTransparency`, `increaseContrast`, and `reduceMotion` modes cleanly scoped to `:root[data-a11y-*]`.
+### Standard CSS Blur vs. TrueGlass
 
-### Capability Matrix
-
-| Capability | Standard CSS Glass (`backdrop-filter: blur`) | TrueGlass |
+| Feature | Standard CSS Glass (`backdrop-filter: blur`) | TrueGlass |
 | :--- | :--- | :--- |
-| **Perimeter Refraction** | Uniform flat blur across entire box | Snell's law $G^2$ superellipse bezel + clear interior |
-| **Chromatic Dispersion** | None | Multi-channel Cauchy R/G/B refractive split |
-| **Cross-Browser Engine** | Single CSS property | sRGB SVG filter graph + 3-stage WebGL2 rasterizer |
-| **Droplet Merging** | Hard overlapping borders | Single-pass WebGL2 $C^2$ `sminCubic` liquid bridge fusion |
-| **Specular Rim Lighting** | Static border color | Pure-GPU directional Fresnel rim + pointer/gyroscope tilt |
-| **Backdrop Adaptation** | Manual theme classes | Hysteresis luminance ($Y$) & edge-variance ($\sigma_Y$) sensor |
-| **Material Continuum** | Single opacity | `regular` / `clear` / `scrim` / `identity` + materialize-by-bending |
-| **Accessibility** | Manual overrides required | Built-in `reduceTransparency`, `increaseContrast`, `reduceMotion` |
+| **Glass Look** | Flat, cloudy rectangle | Real curved-bezel refraction + crystal-clear center |
+| **Edge Prism / Dispersion** | None | Physical R/G/B light separation along curved edges |
+| **Merging Controls** | Hard overlapping borders | Smooth liquid droplet fusion (`createGlassContainer`) |
+| **Rim Lighting** | Static 1px border | Pure-GPU directional Fresnel rim + cursor/gyro tilt |
+| **Tactile Physics** | CSS ease curves | Closed-form spring physics, rubber-band press & lens lift |
+| **Background Contrast** | Manual light/dark classes | Auto-adapts polarity, ambient color spill & shadows |
+| **Cross-Browser Support** | Inconsistent blur look | Automatic SVG (Chrome/Edge) + WebGL2 (Safari/Firefox) |
+| **Accessibility** | DIY | Built-in `reduceTransparency`, `increaseContrast`, `reduceMotion` |
 
 ---
 
-## Studio Showcase
+## 30-Second Quick Start
 
-Explore every optical module interactively at **[trueglass.vercel.app](https://trueglass.vercel.app)**.
-
-### 1. Glass Magnifier & Optical Lab
-Drag the velocity-coupled spring lens across typography and tune **Bend**, **Cauchy Dispersion**, **Frost**, **Rim Specular**, **Clear ↔ Tinted Continuum**, and **GPU Light Tilt** in real time.
-
-<p align="center">
-  <a href="https://trueglass.vercel.app/#optics-lab">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/optics-lab.png" alt="TrueGlass Magnifier and Optical Lab showing live Snell refraction over typography and interactive optical sliders" width="100%" />
-  </a>
-</p>
-
-### 2. Shared Glass Container · $C^2$ Droplet Fusion
-Unites adjacent glass controls inside a single WebGL2 backdrop pass so approaching pills fuse via continuous cubic smooth-minimum (`sminCubic`) liquid necks with chromatic dispersion and cross-sibling Gaussian touch glow.
-
-<p align="center">
-  <a href="https://trueglass.vercel.app/#droplet-fusion">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/droplet-fusion.png" alt="TrueGlass Shared Glass Container demonstrating C2 sminCubic liquid bridge fusion between a Library pill and Search orb" width="100%" />
-  </a>
-</p>
-
-### 3. UI Component Suite & Concentric Squircle Architecture
-Ten zero-dependency interactive primitives — **Button**, **TabBar**, **SegmentedControl**, **Menu**, **SearchField**, **Input**, **Slider**, **Switch**, **Glass**, and **GlassContainer** — built with hardware-matched concentric radii (`concentricRadius(outer, pad) = max(0, outer - pad)`) and explicit accessibility overrides.
-
-<p align="center">
-  <a href="https://trueglass.vercel.app/#components">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/components-suite.png" alt="TrueGlass UI Component Suite showcasing Button, TabBar, SegmentedControl, Menu, Search, Slider, Switch, and Concentric Squircle Accessibility" width="100%" />
-  </a>
-</p>
-
-### 4. Adaptive Luminance & Contrast Sensor
-Continuously samples perceptual luminance ($Y$), horizontal edge-contrast variance ($\sigma_Y$), and ambient RGB chroma beneath floating glass bars to flip light/dark polarity with hysteresis and deepen grounding shadows over dense typography.
-
-<p align="center">
-  <a href="https://trueglass.vercel.app/#adaptive">
-    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/adaptive-sensor.png" alt="TrueGlass Adaptive Luminance Sensor over a golden hour sunset scene with live Y, sigma, and grounding shadow telemetry" width="100%" />
-  </a>
-</p>
-
----
-
-## Optical Architecture
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/optical-pipeline.svg" alt="TrueGlass Dual-Engine Optical Pipeline architecture diagram" width="100%" />
-</p>
-
----
-
-## Installation
+### 1. Install
 
 ```bash
 npm install trueglass
 ```
 
-Or import directly in browser ESM via CDN:
+Or drop it straight into plain HTML via CDN (no bundler required):
 
 ```html
 <link rel="stylesheet" href="https://unpkg.com/trueglass@latest/dist-lib/styles.css" />
@@ -131,34 +88,13 @@ Or import directly in browser ESM via CDN:
 </script>
 ```
 
-### Package Entrypoints
-
-| Import Path | Description |
-| :--- | :--- |
-| `trueglass` | Full library: headless optical core + all interactive UI components |
-| `trueglass/core` | Headless optical engine only (refraction, springs, SDF math, adaptive sensor, a11y) |
-| `trueglass/components` | Interactive UI component factories (`createButton`, `createTabBar`, `createGlass`, etc.) |
-| `trueglass/styles.css` | Isolated `.lg-*` component & token stylesheet (zero global page resets) |
-
----
-
-## Quick Start
-
-### 1. Interactive UI Components
+### 2. Add Liquid Glass UI Controls (Vanilla JS / TypeScript)
 
 ```ts
 import { createButton, createSlider, createSwitch, createTabBar } from "trueglass";
 import "trueglass/styles.css";
 
-// 1. Pill button with rubber-band spring press & optical materialize-by-bending
-const button = createButton({
-  label: "Continue",
-  variant: "glass", // "glass" | "filled"
-  material: "regular", // "regular" | "clear" | "identity"
-  onClick: () => console.log("Clicked"),
-});
-
-// 2. Capsule TabBar with lifted Snell meniscus lens & prismatic dispersion
+// Liquid Glass TabBar with press-and-drag magnifying droplet
 const tabs = createTabBar({
   ariaLabel: "Navigation",
   value: "radio",
@@ -168,35 +104,32 @@ const tabs = createTabBar({
     { value: "radio", label: "Radio" },
     { value: "library", label: "Library" },
   ],
-  onChange: (value) => console.log("Selected tab:", value),
+  onChange: (tab) => console.log("Selected:", tab),
 });
 
-// 3. Dual-bed refraction Switch & lifted-thumb Slider
-const toggle = createSwitch({
-  ariaLabel: "Dark appearance",
-  checked: true,
-  onChange: (checked) => console.log("Switch:", checked),
+// Rubber-band spring Glass Button
+const button = createButton({
+  label: "Continue",
+  variant: "glass", // "glass" | "filled"
+  material: "regular", // "regular" | "clear" | "identity"
+  onClick: () => console.log("Clicked!"),
 });
 
-const slider = createSlider({
-  ariaLabel: "Volume",
-  min: 0,
-  max: 100,
-  value: 60,
-  onInput: (val) => console.log("Slider:", val),
-});
+// Magnifying-thumb Slider & Dual-bed Switch
+const slider = createSlider({ ariaLabel: "Volume", min: 0, max: 100, value: 60 });
+const toggle = createSwitch({ ariaLabel: "Dark mode", checked: true });
 
-document.body.append(tabs.element, button.element, toggle.element, slider.element);
+document.body.append(tabs.element, button.element, slider.element, toggle.element);
 ```
 
-### 2. Linking Glass Surfaces to a Rich Backdrop (`[data-fluid-backdrop]`)
+### 3. Make Glass Refract Your Background (`data-fluid-backdrop`)
 
-Mark any image, canvas, video, or container with `data-fluid-backdrop` so overlapping TrueGlass elements automatically bind and refract its content:
+Add `data-fluid-backdrop` to any image, canvas, video, or background container. Overlapping TrueGlass elements automatically detect and refract it:
 
 ```html
-<div class="hero-stage" data-theme="dark">
+<div class="hero" data-theme="dark">
   <img src="/wallpaper.webp" data-fluid-backdrop alt="" />
-  <div id="hud"></div>
+  <div id="glass-hud"></div>
 </div>
 ```
 
@@ -210,38 +143,91 @@ const card = createGlass({
   interactive: true,
 });
 
-document.getElementById("hud")!.appendChild(card.element);
+document.getElementById("glass-hud")!.appendChild(card.element);
 refitAllGlass();
 ```
 
-### 3. Headless Optics on Custom DOM Elements (`trueglass/core`)
+### 4. Using with React / Next.js (or Vue, Svelte, Solid)
 
-Apply TrueGlass refraction, tactile rubber-band press physics, and adaptive luminance sensing to your own markup or framework components (React, Vue, Svelte, Solid, Astro):
+TrueGlass is framework-agnostic and owns zero global CSS resets. Wrap any ref in a `useEffect` (or attach headless optics directly to your existing JSX elements):
 
-```ts
-import {
-  attachInteractivePress,
-  attachRefraction,
-  setAccessibilityModes,
-} from "trueglass/core";
+```tsx
+import { useEffect, useRef } from "react";
+import { attachInteractivePress, attachRefraction } from "trueglass/core";
 import "trueglass/styles.css";
 
-const customEl = document.querySelector<HTMLElement>(".my-pill")!;
-customEl.classList.add("lg-glass");
+export function LiquidGlassPill({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLButtonElement>(null);
 
-const refraction = attachRefraction(customEl);
-const stopPress = attachInteractivePress(customEl);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const refraction = attachRefraction(el);
+    const stopPress = attachInteractivePress(el);
+    return () => {
+      stopPress();
+      refraction.destroy();
+    };
+  }, []);
 
-// Trigger optical materialize / dematerialize transition
-refraction.dematerialize();
-setTimeout(() => refraction.materialize(), 400);
-
-// Clean up on unmount
-function destroy() {
-  stopPress();
-  refraction.destroy();
+  return (
+    <button ref={ref} className="lg-glass lg-button" type="button">
+      {children}
+    </button>
+  );
 }
 ```
+
+### Package Entrypoints
+
+| Import Path | What It Includes |
+| :--- | :--- |
+| `trueglass` | Everything — headless optical engine + all 10 UI components |
+| `trueglass/core` | Headless engine only (refraction, springs, SDF math, adaptive sensor, a11y) |
+| `trueglass/components` | Ready-to-use interactive UI component factories |
+| `trueglass/styles.css` | Scoped `.lg-*` component & token styles (zero global resets) |
+
+---
+
+## Live Showcase
+
+Try every demo interactively in your browser at **[trueglass.vercel.app](https://trueglass.vercel.app)**.
+
+### 1. Glass Magnifier & Optical Lab
+Drag the velocity-reactive glass lens across typography and dial in **Bend**, **Chromatic Dispersion**, **Frost**, **Rim Specular**, **Clear ↔ Tinted**, and **GPU Light Tilt** live.
+
+<p align="center">
+  <a href="https://trueglass.vercel.app/#optics-lab">
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/optics-lab.png" alt="TrueGlass Magnifier and Optical Lab showing real-time refraction over typography and interactive optical sliders" width="100%" />
+  </a>
+</p>
+
+### 2. Shared Glass Container · Liquid Droplet Fusion
+Two separate controls rendered in one shared WebGL2 pass — drag the Search orb closer to the Library pill and watch them melt together with a smooth liquid neck and cross-sibling touch glow.
+
+<p align="center">
+  <a href="https://trueglass.vercel.app/#droplet-fusion">
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/droplet-fusion.png" alt="TrueGlass Shared Glass Container demonstrating smooth liquid droplet fusion between a Library pill and Search orb" width="100%" />
+  </a>
+</p>
+
+### 3. UI Component Suite & Concentric Architecture
+Ten zero-dependency Liquid Glass primitives — **Button**, **TabBar**, **SegmentedControl**, **Menu**, **SearchField**, **Input**, **Slider**, **Switch**, **Glass**, and **GlassContainer** — designed with concentric squircle radii and built-in accessibility modes.
+
+<p align="center">
+  <a href="https://trueglass.vercel.app/#components">
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/components-suite.png" alt="TrueGlass UI Component Suite showcasing Button, TabBar, SegmentedControl, Menu, Search, Slider, Switch, and Concentric Accessibility" width="100%" />
+  </a>
+</p>
+
+### 4. Adaptive Luminance & Contrast Sensor
+Scroll a floating navigation bar from a golden-hour sunset across high-contrast editorial text into a dark starry night — TrueGlass measures luminance and edge contrast in real time to flip light/dark polarity and adapt grounding shadows automatically.
+
+<p align="center">
+  <a href="https://trueglass.vercel.app/#adaptive">
+    <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/adaptive-sensor.png" alt="TrueGlass Adaptive Luminance Sensor over a golden hour sunset scene with live contrast and shadow telemetry" width="100%" />
+  </a>
+</p>
 
 ---
 
@@ -249,103 +235,89 @@ function destroy() {
 
 All component factories are exported from `trueglass` and `trueglass/components`:
 
-### `createGlass(options)`
-Universal refractive container with automatic `[data-fluid-backdrop]` binding.
-- **Options**: `{ className?, tag?, interactive?, materializeOnMount?, material?: "regular" | "clear" | "identity", dimmingScrim?: boolean }`
-- **Handle**: `{ element, refraction, materialize(instant?), dematerialize(instant?), setMaterial(material, dimmingScrim?), refit(), destroy() }`
+| Component | Highlights | Key Options |
+| :--- | :--- | :--- |
+| **`createGlass`** | Universal refracting container with auto `[data-fluid-backdrop]` binding & materialize transitions | `className`, `tag`, `interactive`, `material` (`regular \| clear \| identity`), `dimmingScrim`, `materializeOnMount` |
+| **`createGlassContainer`** | Single-pass WebGL2 droplet fusion container (`sminCubic` liquid necks + cross-sibling glow) | `childrenVariants`, `backdropSrc`, `gap`, `smoothK`, `tint`, `ariaLabel`, `onGapChange` |
+| **`createButton`** | Pill glass or filled button with rubber-band spring press, contact glow & materialize-by-bending | `label`, `iconHtml`, `ariaLabel`, `variant` (`glass \| filled`), `material`, `dimmingScrim`, `destructive`, `tint`, `iconOnly`, `disabled`, `onClick` |
+| **`createTabBar`** | Capsule navigation bar with press-and-drag magnifying droplet lens & chromatic edge dispersion | `items` (`{ value, label, iconHtml? }[]`), `value`, `ariaLabel`, `className`, `onChange` |
+| **`createSegmentedControl`** | Synchronized 3-layer ink lens segmented selector with spring sliding thumb | `items`, `value`, `ariaLabel`, `className`, `onChange` |
+| **`createSwitch`** | Dual-bed refraction toggle switch with spring lift, drag scrubbing & bounded overshoot | `checked`, `disabled`, `ariaLabel`, `className`, `onChange` |
+| **`createSlider`** | Continuous or stepped slider whose thumb lifts into a `60×40px` magnifying lens over the track | `min`, `max`, `step`, `value`, `disabled`, `ariaLabel`, `className`, `onInput` |
+| **`createMenu`** | Trigger-to-card `clip-path` morphing popover with rubber resistance & magnetic row scrubbing | `ariaLabel`, `triggerIconHtml`, `align` (`start \| end`), `items` |
+| **`createSearchField`** & **`createInput`** | Capsule glass search & text fields with animated clear button and focus ring | `placeholder`, `value`, `disabled`, `ariaLabel`, `className`, `onInput` |
 
-### `createGlassContainer(options)`
-Single-pass WebGL2 container that fuses adjacent controls with $C^2$ cubic smooth-minimum (`sminCubic`) liquid bridges, chromatic neck dispersion, and cross-sibling pointer glow. Enforces homogeneous material variants (`"regular"` and `"clear"` children cannot be mixed).
-- **Options**: `{ childrenVariants, backdropSrc?, gap?: number, smoothK?: number, tint?: number, ariaLabel?, onGapChange? }`
-- **Handle**: `{ element, setGap(px), getGap(), setSmoothK(k), getSmoothK(), setTint(t), setBackdropSrc(url), refit(), destroy() }`
-
-### `createButton(options)`
-Tactile glass or filled pill button with anisotropic rubber-band press physics, internal pointer-contact glow, and optical materialize-by-bending.
-- **Options**: `{ label?, iconHtml?, ariaLabel?, variant?: "glass" | "filled", material?, dimmingScrim?, destructive?, tint?, iconOnly?, disabled?, materializeOnMount?, onClick? }`
-
-### `createTabBar(options)` & `createSegmentedControl(options)`
-Capsule navigation bars with a press-and-drag lifted magnifying droplet lens, curved Snell meniscus backdrop refraction, and luminous chromatic dispersion.
-- **Options**: `{ items: Array<{ value, label, iconHtml? }>, value?, ariaLabel?, className?, onChange? }`
-- **Handle**: `{ element, getValue(), setValue(next, instant?), refit(), destroy() }`
-
-### `createSwitch(options)`
-Dual-bed stand-in refraction toggle switch with exclusion masking, spring thumb lift, drag scrubbing, and asymptotic bounded overshoot.
-- **Options**: `{ checked?, disabled?, ariaLabel, className?, onChange? }`
-- **Handle**: `{ element, getChecked(), setChecked(next), setDisabled(disabled), destroy() }`
-
-### `createSlider(options)`
-Continuous or stepped range slider whose thumb lifts into a `60×40px` magnifying glass lens refracting the inset track and fill bar.
-- **Options**: `{ min?, max?, step?, value?, disabled?, ariaLabel, className?, onInput? }`
-- **Handle**: `{ element, input, getValue(), setValue(next), setStep(step), setDisabled(disabled), destroy() }`
-
-### `createMenu(options)`
-Trigger-to-card `clip-path` morphing popover menu with scale-coupled blur/shadow spread, icon blur drift, exponential rubber resistance, and magnetic row scrubbing.
-- **Options**: `{ ariaLabel, triggerIconHtml?, align?: "start" | "end", items: Array<MenuEntryItem | { type: "separator" }> }`
-- **Handle**: `{ element, isOpen(), open(), close(), toggle(), destroy() }`
-
-### `createSearchField(options)` & `createInput(options)`
-Capsule glass text and search inputs with animated clear action and focus ring.
-- **Options**: `{ placeholder?, value?, disabled?, ariaLabel?, className?, onInput? }`
-- **Handle**: `{ element, input, setDisabled(disabled), destroy() }`
+Every component returns a clean imperative handle with `.element`, state getters/setters, `.refit()`, and `.destroy()`.
 
 ---
 
 ## Headless Core API (`trueglass/core`)
 
-| Module | Exports | Purpose |
+Build your own custom glass components using the underlying optical engine directly:
+
+| Module | Key Exports | What It Does |
 | :--- | :--- | :--- |
-| [optics.ts](src/core/optics.ts) | `superellipseSDF`, `squircleSDF`, `squircleNormal`, `sminCubic`, `sminCubicGradient`, `concentricRadius`, `computeBezelProfile`, `sampleBezelProfile`, `generateOpticalMaps`, `benchmarkOptics` | $G^2$ $L^4$ superellipse SDFs, $C^2$ smooth-min union & analytic gradients, hardware concentric radius solver, Snell bezel LUTs, and flat-interior-skipping `Uint32Array` kernel. |
-| [lens.ts](src/core/lens.ts) | `createLens`, `createBackdropLens`, `fitBackdropLens`, `lensMap`, `lensField`, `distance`, `shapeOf`, `tuningOf` | Packed-RG sRGB `<feDisplacementMap>` SVG filter graph generator, multi-channel Cauchy dispersion, and stand-in exclusion masking. |
-| [refraction.ts](src/core/refraction.ts) | `GLASS`, `rimMap`, `attachRefraction`, `refitAllRefractions`, `materializeAllRefractions` | Automatic `[data-fluid-backdrop]` discovery, viewport-culled surface tracking, idle sleep/wake loop, Fresnel rim painter, and spring bend transitions. |
-| [drawn.ts](src/core/drawn.ts) | `createDrawnLens`, `drawsLens` | 3-stage WebGL2 (`BEND` / `SOFTEN` / `FINISH`) backdrop rasterizer for non-SVG `backdrop-filter` browsers. |
-| [spring.ts](src/core/spring.ts) | `createSpring`, `advanceSpringState`, `isReducedMotion` | Closed-form 2nd-order harmonic oscillator supporting underdamped, critically damped, and overdamped motion. |
-| [adaptive-sensor.ts](src/core/adaptive-sensor.ts) | `analyzeBackdropPixels`, `attachAdaptiveBackdropSensor` | Perceptual luminance ($Y$), horizontal edge-contrast variance ($\sigma_Y$), ambient RGB spill, and hysteresis polarity switching. |
-| [interaction.ts](src/core/interaction.ts) | `attachInteractivePress`, `attachVirtualTiltLight`, `setAccessibilityModes`, `getAccessibilityModes` | Anisotropic rubber-band pointer stretch, contact glow coordinates, shortest-arc pointer/gyroscope light tilt, and accessibility state manager. |
+| [refraction.ts](src/core/refraction.ts) | `attachRefraction`, `refitAllRefractions`, `materializeAllRefractions`, `rimMap`, `GLASS` | Auto-discovers `[data-fluid-backdrop]`, paints Fresnel rims, manages viewport-culled & idle-sleeping refraction updates. |
+| [lens.ts](src/core/lens.ts) | `createLens`, `createBackdropLens`, `fitBackdropLens`, `lensMap`, `lensField` | Generates packed-RG sRGB `<feDisplacementMap>` SVG filter graphs with Cauchy RGB dispersion and stand-in masking. |
+| [drawn.ts](src/core/drawn.ts) | `createDrawnLens`, `drawsLens` | 3-stage WebGL2 (`BEND → SOFTEN → FINISH`) backdrop rasterizer for Safari & Firefox. |
+| [optics.ts](src/core/optics.ts) | `superellipseSDF`, `squircleSDF`, `sminCubic`, `concentricRadius`, `computeBezelProfile`, `generateOpticalMaps` | $G^2$ $L^4$ superellipse SDFs, $C^2$ cubic smooth-min union, hardware concentric radius solver, and Snell bezel lookup tables. |
+| [spring.ts](src/core/spring.ts) | `createSpring`, `advanceSpringState`, `isReducedMotion` | Closed-form 2nd-order harmonic spring solver (60–240 Hz, zero Euler drift). |
+| [adaptive-sensor.ts](src/core/adaptive-sensor.ts) | `analyzeBackdropPixels`, `attachAdaptiveBackdropSensor` | Samples perceptual luminance ($Y$), horizontal edge variance ($\sigma_Y$), and ambient color with hysteresis polarity switching. |
+| [interaction.ts](src/core/interaction.ts) | `attachInteractivePress`, `attachVirtualTiltLight`, `setAccessibilityModes`, `getAccessibilityModes` | Anisotropic rubber-band press physics, pointer/gyroscope specular rim tilt, and global accessibility toggles. |
 | [webgl-stage.ts](src/core/webgl-stage.ts) | `drawCrossSectionRays`, `createWebGLBackdropLens`, `readElementRegionPixels` | Interactive Snell's law cross-section ray tracer and standalone WebGL2 lens stage. |
 
 ---
 
 ## CSS Tokens & Accessibility
 
-### Optical & Surface Custom Properties ([src/trueglass.css](src/trueglass.css))
+Customize every optical property with standard CSS variables ([src/trueglass.css](src/trueglass.css)):
 
-| Custom Property | Default (Dark / Light) | Description |
+| CSS Variable | Default (Dark / Light) | Effect |
 | :--- | :--- | :--- |
-| `--lg-glass-bend` | `2` (`3.4` on `TabBar`) | Refracted squircle bezel displacement reach scalar. |
-| `--lg-glass-dispersion` | `0.6` (`2.6` on `TabBar`) | Cauchy R/G/B chromatic separation strength along curved edges. |
-| `--lg-ior` | `1.5` | Index of refraction passed to the Snell bezel solver. |
-| `--lg-blur` | `3px` (`2px` on `TabBar`) | Interior frost blur radius before tint modulation. |
-| `--lg-tint-amount` | `0` (`0..1`) | Continuous Clear ↔ Tinted surface density scalar. |
-| `--lg-rim-shine` | `0.13` / `0.30` | Specular Fresnel rim highlight intensity. |
-| `--lg-light-angle` | `-135` (degrees) | Specular rim light vector angle (rotates live on tilt or slider input). |
-| `--lg-ambient-spill` | `transparent` | Backdrop mean chroma tint applied to large adaptive panels. |
-| `--lg-adaptive-shadow` | dynamic (`0.06..0.42`) | Edge-contrast-driven grounding shadow opacity scalar. |
+| `--lg-glass-bend` | `2` (`3.4` on `TabBar`) | Curved bezel refraction strength |
+| `--lg-glass-dispersion` | `0.6` (`2.6` on `TabBar`) | R/G/B prismatic edge separation |
+| `--lg-ior` | `1.5` | Refractive index passed to Snell's law |
+| `--lg-blur` | `3px` (`2px` on `TabBar`) | Interior frost blur radius |
+| `--lg-tint-amount` | `0` (`0..1`) | Continuous Clear ↔ Tinted surface density |
+| `--lg-rim-shine` | `0.13` / `0.30` | Specular Fresnel rim highlight brightness |
+| `--lg-light-angle` | `-135` (deg) | Directional specular light angle (live-animated on tilt) |
+| `--lg-ambient-spill` | `transparent` | Mean backdrop color tint on large adaptive surfaces |
+| `--lg-adaptive-shadow` | dynamic (`0.06..0.42`) | Contrast-driven grounding shadow opacity |
 
-### Accessibility Modes (`setAccessibilityModes`)
+### Accessibility Overrides
 
 ```ts
 import { setAccessibilityModes } from "trueglass";
 
 setAccessibilityModes({
-  reduceTransparency: true, // Sets data-a11y-transparency="reduce" on <html>
-  increaseContrast: true,   // Sets data-a11y-contrast="high" on <html>
-  reduceMotion: true,       // Sets data-a11y-motion="reduce" on <html>
+  reduceTransparency: true, // Solid high-legibility plates (data-a11y-transparency="reduce")
+  increaseContrast: true,   // Crisp 1.5px foreground borders (data-a11y-contrast="high")
+  reduceMotion: true,       // Instant spring settling & 0ms transitions (data-a11y-motion="reduce")
 });
 ```
 
-| Mode | Root Attribute | Effect |
-| :--- | :--- | :--- |
-| `reduceTransparency` | `data-a11y-transparency="reduce"` | Replaces translucent glass fills with high-legibility `--lg-surface` plates while excluding active overlay lenses and filled buttons. |
-| `increaseContrast` | `data-a11y-contrast="high"` | Adds crisp `1.5px` high-contrast foreground borders and outer separation shadows. |
-| `reduceMotion` | `data-a11y-motion="reduce"` | Collapses CSS transition durations and snaps harmonic springs instantaneously to target values. |
+---
+
+## Under the Hood
+
+For engineers curious about how TrueGlass achieves 60–240 Hz physical refraction in the browser:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kicode01/trueglass/main/docs/assets/optical-pipeline.svg" alt="TrueGlass Dual-Engine Optical Pipeline architecture diagram" width="100%" />
+</p>
+
+1. **Geometry ($G^2$ Superellipses & $C^2$ Fusion)** — Glass shapes use $L^4$ superellipse signed distance fields (`superellipseSDF`) for curvature-continuous squircle corners, and cubic smooth-minimum (`sminCubic`) for smooth liquid bridges inside `createGlassContainer`.
+2. **Physics (Snell's Law + Flat-Interior Skip)** — Surface normals along the curved bezel refract rays via $n_1 \sin\theta_1 = n_2 \sin\theta_2$ (`IOR 1.50`) while a fast flat-interior skip kernel bypasses the unbent center pixels.
+3. **Dual Render Engine** — Chromium renders packed-RG `<feDisplacementMap>` SVG filters in locked sRGB space; Safari and Firefox automatically use a 3-pass WebGL2 pipeline (`BEND → SOFTEN → FINISH`). Both engines pause automatically when off-screen, idle, or in background tabs.
+4. **Pure-GPU Rim Lighting** — Instead of re-baking rim textures on the CPU when tilting, specular highlights are driven directly on the GPU via `--lg-light-angle` (`--lg-lx`, `--lg-ly`).
 
 ---
 
-## Development & Packaging
+## Development
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start local Optical Studio showcase at http://localhost:5173/
+npm install          # Install dev dependencies
+npm run dev          # Start local Optical Studio at http://localhost:5173/
 npm test             # Run Vitest unit test suite
 npm run build        # Type-check and build showcase web app to dist/
 npm run build:lib    # Build npm package (ESM + .d.ts + styles.css) to dist-lib/
