@@ -1,4 +1,4 @@
-import { createSpring } from "./spring";
+import { createSpring, prefersReducedMotion } from "./spring";
 
 export interface AccessibilityState {
   reduceTransparency: boolean;
@@ -165,6 +165,38 @@ function normalizeAngleDeg(deg: number): number {
 }
 
 /**
+ * Subtle tactile micro-haptic pulse on Android devices (`navigator.vibrate`).
+ * Silently no-ops on desktop, iOS Safari, or when Reduced Motion is active.
+ */
+export function hapticTap(durationMs = 8): void {
+  if (prefersReducedMotion()) return;
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    try {
+      navigator.vibrate(durationMs);
+    } catch {
+      // Ignored if blocked before user gesture
+    }
+  }
+}
+
+/**
+ * Requests iOS 13+ Safari DeviceOrientation permission when required inside a user gesture.
+ * Resolves to `true` on platforms where orientation events require no explicit permission.
+ */
+export async function requestTiltPermission(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const doe = window.DeviceOrientationEvent as
+    | (typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> })
+    | undefined;
+  if (!doe || typeof doe.requestPermission !== "function") return true;
+  try {
+    return (await doe.requestPermission()) === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Listens to pointer parallax & device gyroscope tilt to smoothly rotate the virtual specular light angle
  * on TrueGlass rims ("in some places they move when you tilt your device").
  */
@@ -177,6 +209,7 @@ export function attachVirtualTiltLight(
   let stopped = false;
   let currentAngle = initialAngleDeg;
   let lastEmitted = Number.NaN;
+  let hasGyro = false;
 
   const angleSpring = createSpring(currentAngle, 120, 20, (deg) => {
     currentAngle = deg;
@@ -194,6 +227,7 @@ export function attachVirtualTiltLight(
   };
 
   const onPointerMove = (ev: PointerEvent) => {
+    if (hasGyro && ev.pointerType === "touch") return;
     const nx = (ev.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
     const ny = (ev.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
     if (nx * nx + ny * ny < 0.0025) return;
@@ -202,7 +236,21 @@ export function attachVirtualTiltLight(
 
   const onDeviceOrientation = (ev: DeviceOrientationEvent) => {
     if (ev.gamma === null || ev.beta === null) return;
-    steerTo((Math.atan2(ev.beta - 35, ev.gamma) * 180) / Math.PI);
+    hasGyro = true;
+    const angle = (typeof screen !== "undefined" && screen.orientation?.angle) || 0;
+    let gx = ev.gamma;
+    let gy = ev.beta - 35;
+    if (angle === 90) {
+      gx = ev.beta - 35;
+      gy = -ev.gamma;
+    } else if (angle === 270 || angle === -90) {
+      gx = -(ev.beta - 35);
+      gy = ev.gamma;
+    } else if (angle === 180) {
+      gx = -ev.gamma;
+      gy = -(ev.beta - 35);
+    }
+    steerTo((Math.atan2(gy, gx) * 180) / Math.PI);
   };
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });

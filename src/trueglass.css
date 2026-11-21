@@ -65,6 +65,7 @@
 
 .lg-glass {
   position: relative;
+  background-color: var(--lg-glass);
   background-color: color-mix(in srgb, var(--lg-glass) calc(var(--lg-surface-alpha, var(--lg-materialize, 1)) * 100%), transparent);
   -webkit-backdrop-filter:
     blur(calc((var(--lg-blur, 3px) + var(--lg-tint-amount, 0) * 10px) * var(--lg-surface-alpha, var(--lg-materialize, 1))))
@@ -74,6 +75,9 @@
     blur(calc((var(--lg-blur, 3px) + var(--lg-tint-amount, 0) * 10px) * var(--lg-surface-alpha, var(--lg-materialize, 1))))
     var(--lg-filter, brightness(1))
     saturate(calc(1 + 0.5 * var(--lg-rim-alpha, var(--lg-materialize, 1))));
+  box-shadow:
+    inset 0 0 0 0.5px var(--lg-edge),
+    0 1px 3px var(--lg-drop);
   box-shadow:
     inset 0 0 0 0.5px color-mix(in srgb, var(--lg-edge) calc(var(--lg-rim-alpha, var(--lg-materialize, 1)) * 100%), transparent),
     0 1px 3px color-mix(in srgb, var(--lg-drop) calc(var(--lg-surface-alpha, var(--lg-materialize, 1)) * 100%), transparent);
@@ -99,6 +103,7 @@
 }
 
 .lg-glass[data-rim] {
+  box-shadow: 0 1px 3px var(--lg-drop);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--lg-drop) calc(var(--lg-surface-alpha, var(--lg-materialize, 1)) * 100%), transparent);
 }
 
@@ -256,6 +261,7 @@
 }
 
 .lg-button:disabled {
+  background-color: var(--lg-glass);
   background-color: color-mix(in srgb, var(--lg-glass) calc(var(--lg-surface-alpha, var(--lg-materialize, 1)) * 100%), transparent);
   opacity: 0.35;
   cursor: default;
@@ -276,10 +282,12 @@
 
 .lg-button[data-variant="filled"],
 .lg-button[data-variant="filled"]:disabled {
+  background-color: var(--lg-button-fill);
   background-color: color-mix(in srgb, var(--lg-button-fill) calc(var(--lg-surface-alpha, var(--lg-materialize, 1)) * 100%), transparent);
 }
 
 .lg-button[data-variant="filled"]:not([data-materializing]):is(:active, [data-pressed]) {
+  background-color: var(--lg-button-fill);
   background-color: color-mix(in srgb, var(--lg-button-fill) 85%, #000);
 }
 
@@ -316,6 +324,7 @@
   border-radius: calc(var(--lg-tab-height) / 2 + var(--lg-tab-inset));
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -570,6 +579,7 @@
   border-radius: calc(var(--lg-tab-height) / 2);
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -741,6 +751,9 @@
   cursor: pointer;
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .lg-switch::before {
@@ -906,6 +919,7 @@
   background: transparent;
   box-shadow: none;
   opacity: 0;
+  touch-action: none;
 }
 
 .lg-slider:has(input:focus-visible) .lg-slider-thumb {
@@ -940,6 +954,8 @@
   font-size: 14px;
   transform-origin: calc(100% - 20px) 20px;
   touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1123,6 +1139,8 @@
   border: 1px solid var(--lg-edge, rgb(255 255 255 / 0.1));
   overflow: hidden;
   background: #0c101d;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
@@ -1219,5 +1237,56 @@
 :root[data-a11y-motion="reduce"] *::after {
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-glass,
+  .lg-glass::after,
+  .lg-tab-bar-glass::before,
+  .lg-button,
+  .lg-tab,
+  .lg-tab-lens,
+  .lg-tab-tint,
+  .lg-segmented-thumb,
+  .lg-input,
+  .lg-menu-card::after,
+  .lg-menu-plate,
+  .lg-menu-item::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 440px) {
+  .lg-tab-bar[data-icons] {
+    --lg-tab-width: 64px;
+    --lg-tab-height: 48px;
+    --lg-lens-grow-x: 18px;
+    --lg-lens-grow-y: 12px;
+  }
+
+  .lg-tab-icon > svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .lg-segmented {
+    --lg-tab-width: 74px;
+  }
+}
+
+/* Graceful surface fallback for legacy browsers or Android WebViews without backdrop-filter */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :where(:root, [data-theme="light"]) {
+    --lg-glass: rgb(255 255 255 / 0.88);
+    --lg-tab-glass: rgb(255 255 255 / 0.88);
+    --lg-surface: rgb(250 250 252 / 0.96);
+  }
+
+  :where([data-theme="dark"]) {
+    --lg-glass: rgb(32 34 42 / 0.88);
+    --lg-tab-glass: rgb(28 32 42 / 0.88);
+    --lg-surface: rgb(24 25 30 / 0.96);
+  }
 }
 

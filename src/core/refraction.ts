@@ -1,7 +1,19 @@
 import { createDrawnLens, drawsLens } from "./drawn";
-import { createLens, distance, fitBackdropLens, shapeOf, type Lens, type LensOptions, type Shape } from "./lens";
-import { createSpring } from "./spring";
+import {
+  createLens,
+  distance,
+  fitBackdropLens,
+  getOpticalDpr,
+  refractsBackdrop,
+  shapeOf,
+  type Lens,
+  type LensOptions,
+  type Shape,
+} from "./lens";
+import { createSpring, onSpringActivity } from "./spring";
 import { svgContainer, svgEl } from "./svg";
+
+export { refractsBackdrop };
 
 export const GLASS: LensOptions = {
   strength: 2,
@@ -119,6 +131,10 @@ function parseColour(context: CanvasRenderingContext2D, colour: string): Colour 
     const [r, g, b] = [1, 3, 5].map((at) => parseInt(value.slice(at, at + 2), 16));
     return [r!, g!, b!, 1];
   }
+  if (value.startsWith("color(")) {
+    const [r = 0, g = 0, b = 0, a = 1] = (value.match(/-?[\d.]+/g) ?? []).map(Number);
+    return [Math.round(clamp(r, 0, 1) * 255), Math.round(clamp(g, 0, 1) * 255), Math.round(clamp(b, 0, 1) * 255), clamp(a, 0, 1)];
+  }
   const [r = 0, g = 0, b = 0, a = 1] = (value.match(/[\d.]+/g) ?? []).map(Number);
   return [r, g, b, a];
 }
@@ -169,7 +185,7 @@ function paintRim(element: HTMLElement): void {
   // Rim facing |nx*lx + ny*ly| is 180deg-periodic; fold angle to maximize cache reuse
   const folded = ((lightAngle % 180) + 180) % 180;
   const lightKey = Math.abs(lightAngle + 135) < 0.01 ? "-135" : String(Math.round(folded / 2) * 2);
-  const density = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
+  const density = getOpticalDpr("rim");
   const key = [shape.width, shape.height, shape.radius, shine.toFixed(2), edge.join(","), lightKey, density].join("|");
 
   let url = rims.get(key);
@@ -202,12 +218,23 @@ let unwatch: (() => void) | undefined;
 function onThemeChange(repaint: () => void): () => void {
   repaints.add(repaint);
   if (!unwatch && typeof document !== "undefined") {
-    const run = () => repaints.forEach((each) => each());
+    let pending = 0;
+    const flush = () => {
+      pending = 0;
+      repaints.forEach((each) => each());
+    };
+    const run = () => {
+      if (pending) return;
+      if (typeof requestAnimationFrame === "function") pending = requestAnimationFrame(flush);
+      else flush();
+    };
     const observer = new MutationObserver(run);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"], subtree: true });
     const scheme = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
     scheme?.addEventListener?.("change", run);
     unwatch = () => {
+      if (pending && typeof cancelAnimationFrame === "function") cancelAnimationFrame(pending);
+      pending = 0;
       observer.disconnect();
       scheme?.removeEventListener?.("change", run);
     };
@@ -270,9 +297,6 @@ function refitting(element: HTMLElement, fit: () => void, properties: string[]):
     },
   };
 }
-
-export const refractsBackdrop = (): boolean =>
-  typeof navigator !== "undefined" && /Chrom(?:e|ium)|Edg\//.test(navigator.userAgent);
 
 const BACKDROP_MARK = "data-fluid-backdrop";
 
@@ -341,6 +365,7 @@ export function wakeFollowLoop(): void {
 function ensureFollowLoop(): void {
   if (!visibilityBound && typeof document !== "undefined") {
     visibilityBound = true;
+    onSpringActivity(wakeFollowLoop);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) wakeFollowLoop();
     });
@@ -383,7 +408,7 @@ function profile(bezel: number, thickness: number): { samples: Float32Array; max
 }
 
 function selectionMaps(width: number, height: number, radius: number) {
-  const density = typeof window !== "undefined" ? Math.min((devicePixelRatio || 1) * 1.5, 3) : 1;
+  const density = getOpticalDpr("rim");
   const half = 0.5 / density;
   const bezel = clamp(Math.min(width, height) * 0.12, 4, 10);
   const thickness = clamp(Math.min(width, height) * 0.2, 8, 24);
@@ -596,7 +621,7 @@ export function attachRefraction(
       wakeFollowLoop();
       return;
     }
-    if (!bendsBackdrop) {
+    if (!bendsBackdrop || !element.hasAttribute("data-svg-backdrop")) {
       element.style.removeProperty("--lg-filter");
       return;
     }

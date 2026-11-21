@@ -3,7 +3,8 @@ import {
   attachAdaptiveBackdropSensor,
   attachVirtualTiltLight,
   concentricRadius,
-  createSpring,
+  isMobileDevice,
+  requestTiltPermission,
   setAccessibilityModes,
   type BackdropSample,
 } from "./core";
@@ -67,106 +68,143 @@ const TAB_CHOICES = [
 
 const CANVAS_INTER = '"Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 
-function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" | "white-text"): void {
-  const ctx = canvas.getContext("2d");
+const SUNSET_CANVAS_H = 1360;
+
+function wrapCanvasLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function paintSunsetNightCanvas(
+  canvas: HTMLCanvasElement,
+  mode: "sunset-night" | "white-text",
+  targetWidth = 600,
+): void {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return;
-  const w = (canvas.width = 760);
-  const h = (canvas.height = 1600);
+  const w = (canvas.width = Math.max(320, Math.min(760, Math.round(targetWidth))));
+  const h = (canvas.height = SUNSET_CANVAS_H);
+  const padX = Math.round(Math.max(24, Math.min(52, w * 0.075)));
+  const contentW = w - padX * 2;
+  const compact = w < 440;
 
   if (mode === "sunset-night") {
-    // Zone 1 (0..520px): Atmospheric Golden Hour Sky, Horizon Ridge & Specular Water Glints
-    const sky = ctx.createLinearGradient(0, 0, 0, 340);
+    // Zone 1 (0..450px): Atmospheric Golden Hour Sky, Horizon Ridge & Specular Water Glints
+    const sky = ctx.createLinearGradient(0, 0, 0, 295);
     sky.addColorStop(0, "#334766");
     sky.addColorStop(0.38, "#945f57");
     sky.addColorStop(0.76, "#e89f5c");
     sky.addColorStop(1, "#ffebc2");
     ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, 340);
+    ctx.fillRect(0, 0, w, 295);
 
-    const sun = ctx.createRadialGradient(w * 0.52, 265, 8, w * 0.52, 265, 250);
+    const sun = ctx.createRadialGradient(w * 0.52, 232, 8, w * 0.52, 232, Math.min(230, w * 0.42));
     sun.addColorStop(0, "rgba(255, 253, 240, 0.98)");
     sun.addColorStop(0.22, "rgba(255, 224, 152, 0.86)");
     sun.addColorStop(0.65, "rgba(245, 165, 98, 0.25)");
     sun.addColorStop(1, "rgba(245, 165, 98, 0)");
     ctx.fillStyle = sun;
-    ctx.fillRect(0, 40, w, 320);
+    ctx.fillRect(0, 30, w, 290);
 
     ctx.fillStyle = "#5b4d56";
     ctx.beginPath();
-    ctx.moveTo(0, 338);
-    ctx.bezierCurveTo(180, 312, 340, 326, w, 334);
-    ctx.lineTo(w, 346);
-    ctx.lineTo(0, 346);
+    ctx.moveTo(0, 293);
+    ctx.bezierCurveTo(w * 0.24, 270, w * 0.48, 284, w, 290);
+    ctx.lineTo(w, 302);
+    ctx.lineTo(0, 302);
     ctx.closePath();
     ctx.fill();
 
-    const sea = ctx.createLinearGradient(0, 338, 0, 520);
+    const sea = ctx.createLinearGradient(0, 293, 0, 455);
     sea.addColorStop(0, "#b9876e");
     sea.addColorStop(0.45, "#595e74");
     sea.addColorStop(1, "#2a3347");
     ctx.fillStyle = sea;
-    ctx.fillRect(0, 338, w, 182);
+    ctx.fillRect(0, 293, w, 162);
 
-    for (let r = 0; r < 22; r++) {
-      const ry = 346 + r * 7.5;
-      const rw = 240 - r * 5 + (r % 3) * 28;
-      ctx.fillStyle = `rgba(255, 228, 178, ${Math.max(0.08, 0.44 - r * 0.015)})`;
-      ctx.fillRect(w * 0.52 - rw * 0.5 + ((r % 2) * 10 - 5), ry, rw, 1.8);
+    const maxRippleW = Math.min(220, w * 0.44);
+    for (let r = 0; r < 20; r++) {
+      const ry = 302 + r * 7.2;
+      const rw = Math.max(24, maxRippleW - r * (maxRippleW * 0.025) + (r % 3) * 18);
+      ctx.fillStyle = `rgba(255, 228, 178, ${Math.max(0.08, 0.44 - r * 0.016)})`;
+      ctx.fillRect(w * 0.52 - rw * 0.5 + ((r % 2) * 8 - 4), ry, rw, 1.8);
     }
 
-    // Zone 2 (520..1040px): High-Contrast Editorial Typography & Plain White Comparison Card
+    // Zone 2 (455..900px): High-Contrast Editorial Typography & Plain White Comparison Card
     ctx.fillStyle = "#f7f4ec";
-    ctx.fillRect(0, 520, w, 285);
+    ctx.fillRect(0, 455, w, 265);
 
     ctx.fillStyle = "#18181b";
-    ctx.font = `600 13px ${CANVAS_INTER}`;
-    ctx.fillText("OPTICAL FIELD NOTE", 56, 566);
-    ctx.font = `700 28px ${CANVAS_INTER}`;
-    ctx.fillText("Lensing Over Structured Typography", 56, 604);
+    ctx.font = `600 12px ${CANVAS_INTER}`;
+    ctx.fillText("OPTICAL FIELD NOTE", padX, 498);
+    ctx.font = `700 ${compact ? 21 : 26}px ${CANVAS_INTER}`;
+    const headingLines = wrapCanvasLines(ctx, "Lensing Over Structured Typography", contentW);
+    let cursorY = 532;
+    headingLines.forEach((line) => {
+      ctx.fillText(line, padX, cursorY);
+      cursorY += compact ? 27 : 32;
+    });
 
     ctx.strokeStyle = "rgba(24, 24, 27, 0.14)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(56, 624);
-    ctx.lineTo(w - 56, 624);
+    ctx.moveTo(padX, cursorY - 6);
+    ctx.lineTo(w - padX, cursorY - 6);
     ctx.stroke();
 
     ctx.fillStyle = "#27272a";
-    ctx.font = `400 18px ${CANVAS_INTER}`;
-    [
-      "Curved superellipse bezels bend high-frequency typography cleanly",
-      "along perimeter normals while leaving center glyphs razor-sharp.",
-      "High edge variance (σ_Y) automatically deepens grounding shadow.",
-    ].forEach((line, idx) => {
-      ctx.fillText(line, 56, 660 + idx * 32);
+    ctx.font = `400 ${compact ? 14.5 : 16.5}px ${CANVAS_INTER}`;
+    const bodyLines = wrapCanvasLines(
+      ctx,
+      "Curved superellipse bezels bend high-frequency typography cleanly along perimeter normals while leaving center glyphs razor-sharp. High edge variance (σ_Y) automatically deepens grounding shadow.",
+      contentW,
+    );
+    cursorY += 22;
+    bodyLines.forEach((line) => {
+      ctx.fillText(line, padX, cursorY);
+      cursorY += compact ? 23 : 26;
     });
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 805, w, 235);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = `500 14px ${CANVAS_INTER}`;
-    ctx.fillText("Plain White Card Zone — Low Edge Variance (Lightened Shadow)", 160, 928);
+    ctx.fillRect(0, 720, w, 190);
+    ctx.fillStyle = "#64748b";
+    ctx.font = `500 ${compact ? 12.5 : 14}px ${CANVAS_INTER}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Plain White Card · Low Edge Variance", w * 0.5, 818);
+    ctx.textAlign = "left";
 
-    // Zone 3 (1040..1600px): Deep Starry Night & Nebula
-    const night = ctx.createLinearGradient(0, 1040, 0, h);
+    // Zone 3 (910..1360px): Deep Starry Night & Nebula
+    const night = ctx.createLinearGradient(0, 910, 0, h);
     night.addColorStop(0, "#10192d");
     night.addColorStop(0.28, "#080d1b");
     night.addColorStop(0.7, "#0b152a");
     night.addColorStop(1, "#04060d");
     ctx.fillStyle = night;
-    ctx.fillRect(0, 1040, w, h - 1040);
+    ctx.fillRect(0, 910, w, h - 910);
 
-    const nebula = ctx.createRadialGradient(w * 0.62, 1290, 20, w * 0.62, 1290, 310);
+    const nebula = ctx.createRadialGradient(w * 0.62, 1120, 20, w * 0.62, 1120, Math.min(280, w * 0.48));
     nebula.addColorStop(0, "rgba(79, 124, 224, 0.22)");
     nebula.addColorStop(0.55, "rgba(56, 86, 168, 0.08)");
     nebula.addColorStop(1, "rgba(8, 13, 27, 0)");
     ctx.fillStyle = nebula;
-    ctx.fillRect(0, 1040, w, h - 1040);
+    ctx.fillRect(0, 910, w, h - 910);
 
-    for (let s = 0; s < 140; s++) {
+    for (let s = 0; s < 120; s++) {
       const sx = (s * 173 + 37) % w;
-      const sy = 1070 + ((s * 97) % 480);
-      const sr = (s % 4) * 0.45 + 0.55;
+      const sy = 935 + ((s * 97) % (h - 965));
+      const sr = (s % 4) * 0.42 + 0.55;
       ctx.fillStyle = s % 9 === 0 ? "rgba(186, 220, 255, 0.88)" : `rgba(235, 244, 255, ${0.35 + (s % 5) * 0.12})`;
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, Math.PI * 2);
@@ -176,19 +214,21 @@ function paintSunsetNightCanvas(canvas: HTMLCanvasElement, mode: "sunset-night" 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "#0f172a";
-    ctx.font = `700 28px ${CANVAS_INTER}`;
-    ctx.fillText("Utilities (High-Contrast Text)", 56, 106);
+    ctx.font = `700 ${compact ? 22 : 26}px ${CANVAS_INTER}`;
+    ctx.fillText("Utilities (High-Contrast)", padX, 102);
     ["Favorites", "Hidden", "Recently Deleted", "Duplicates", "Receipts", "Handwriting"].forEach((label, idx) => {
-      const y = 158 + idx * 72;
+      const y = 152 + idx * 66;
       ctx.fillStyle = "#f1f5f9";
-      ctx.fillRect(52, y - 32, w - 104, 54);
+      ctx.fillRect(padX, y - 30, contentW, 50);
       ctx.fillStyle = "#0f172a";
-      ctx.font = `600 19px ${CANVAS_INTER}`;
-      ctx.fillText(label, 76, y + 2);
+      ctx.font = `600 ${compact ? 16 : 18}px ${CANVAS_INTER}`;
+      ctx.fillText(label, padX + 18, y + 1);
     });
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = `500 16px ${CANVAS_INTER}`;
-    ctx.fillText("Plain White Region — Adaptive Shadow Lightens", 180, 1140);
+    ctx.fillStyle = "#64748b";
+    ctx.font = `500 ${compact ? 13 : 15}px ${CANVAS_INTER}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Plain White Region · Shadow Lightens", w * 0.5, 980);
+    ctx.textAlign = "left";
   }
 }
 
@@ -221,7 +261,7 @@ function studioSection(
   }
   header.appendChild(headText);
   if (badge) {
-    const pill = createGlass({ tag: "span", className: "section-glass-pill" });
+    const pill = createGlass({ tag: "span", className: "section-glass-pill", bendsBackdrop: false });
     pill.element.textContent = badge;
     header.appendChild(pill.element);
   }
@@ -303,75 +343,96 @@ function mountApp(): void {
   const root = document.getElementById("app")!;
   document.documentElement.setAttribute("data-theme", "dark");
 
-  // Floating Sticky TrueGlass Navigation Capsule (dogfoods real Snell bezel + bowed Fresnel rim over live scrolling content)
+  // Floating Sticky TrueGlass Header Controls (independent glass Logo Menu, TabBar, and npm/GitHub buttons)
   const topbar = document.createElement("header");
   topbar.className = "topbar";
 
-  const topbarGlass = createGlass({ tag: "div", className: "topbar-glass" });
-  topbarGlass.element.innerHTML = `
-    <div class="topbar-inner">
-      <a class="brand-link" href="#top" aria-label="TrueGlass">
-        <img class="brand-mark" src="/icon.png" alt="" width="26" height="26" draggable="false" />
-        <span class="brand-name">TrueGlass</span>
-      </a>
-      <nav class="topnav" aria-label="Primary sections">
-        <span class="topnav-indicator" aria-hidden="true"></span>
-        <a href="#refraction" data-section="refraction">Refraction</a>
-        <a href="#optics-lab" data-section="optics-lab">Optics Lab</a>
-        <a href="#droplet-fusion" data-section="droplet-fusion">Droplet Fusion</a>
-        <a href="#components" data-section="components">Components</a>
-        <a href="#adaptive" data-section="adaptive">Adaptive</a>
-      </nav>
-      <div class="topbar-actions">
-        <a class="version-tag" href="https://www.npmjs.com/package/trueglass" target="_blank" rel="noreferrer" title="View trueglass on npm">npm v1.0.0</a>
-        <a class="gh-link" href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">
-          ${GITHUB_SVG}<span>GitHub</span>
-        </a>
-      </div>
-    </div>
-  `;
-  topbar.appendChild(topbarGlass.element);
-  root.appendChild(topbar);
+  const topbarInner = document.createElement("div");
+  topbarInner.className = "topbar-inner";
 
-  // Spring-gliding active pill indicator inside the TrueGlass navbar
-  const navEl = topbarGlass.element.querySelector<HTMLElement>(".topnav");
-  const navIndicator = topbarGlass.element.querySelector<HTMLElement>(".topnav-indicator");
-  const navLinks = Array.from(topbarGlass.element.querySelectorAll<HTMLAnchorElement>(".topnav a[data-section]"));
   let activeSectionId = "refraction";
-  let navReady = false;
+  let scrollLockUntil = 0;
 
-  const paintIndicator = () => {
-    if (!navIndicator) return;
-    navIndicator.style.transform = `translate3d(${indX.get().toFixed(2)}px, 0, 0)`;
-    navIndicator.style.width = `${indW.get().toFixed(2)}px`;
-  };
-  const indX = createSpring(0, 260, 26, paintIndicator);
-  const indW = createSpring(0, 260, 26, paintIndicator);
-
-  const setActiveNav = (id: string, instant = false) => {
+  const jumpToSection = (id: string) => {
+    scrollLockUntil = performance.now() + 750;
     activeSectionId = id;
-    let activeLink: HTMLAnchorElement | null = null;
-    for (const a of navLinks) {
-      const match = a.dataset.section === id;
-      a.toggleAttribute("data-active", match);
-      a.setAttribute("aria-current", match ? "true" : "false");
-      if (match) activeLink = a;
+    navTabBar.setValue(id);
+    if (id === "top") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
-    if (!activeLink || !navEl || !navIndicator) return;
-    const x = activeLink.offsetLeft;
-    const w = activeLink.offsetWidth;
-    if (w <= 0) return;
-    indX.set(x, instant || !navReady);
-    indW.set(w, instant || !navReady);
-    navIndicator.setAttribute("data-visible", "true");
-    navReady = true;
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
-  for (const a of navLinks) {
-    a.addEventListener("click", () => {
-      if (a.dataset.section) setActiveNav(a.dataset.section, false);
-    });
-  }
+  const NAV_ITEMS = [
+    { value: "refraction", label: "Refraction" },
+    { value: "optics-lab", label: "Optics Lab" },
+    { value: "droplet-fusion", label: "Droplet Fusion" },
+    { value: "components", label: "Components" },
+    { value: "adaptive", label: "Adaptive" },
+  ];
+
+  const LOGO_TRIGGER_HTML = `<img class="topbar-logo-img" src="/icon.png" alt="" width="24" height="24" draggable="false" />`;
+  const logoMenu = createMenu({
+    ariaLabel: "TrueGlass menu",
+    align: "start",
+    triggerIconHtml: LOGO_TRIGGER_HTML,
+    items: [
+      { label: "Back to Top", onSelect: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+      { type: "separator" },
+      ...NAV_ITEMS.map((item) => ({
+        label: item.label,
+        onSelect: () => jumpToSection(item.value),
+      })),
+      { type: "separator" },
+      {
+        label: "npm v1.0.2",
+        onSelect: () => window.open("https://www.npmjs.com/package/trueglass", "_blank", "noopener,noreferrer"),
+      },
+      {
+        label: "GitHub",
+        iconHtml: GITHUB_SVG,
+        onSelect: () => window.open("https://github.com/kicode01/trueglass", "_blank", "noopener,noreferrer"),
+      },
+    ],
+  });
+  logoMenu.element.classList.add("topbar-logo-menu");
+
+  const navTabBar = createTabBar({
+    ariaLabel: "Primary sections",
+    className: "topbar-tabs",
+    value: activeSectionId,
+    items: NAV_ITEMS,
+    onChange: (val) => {
+      scrollLockUntil = performance.now() + 750;
+      activeSectionId = val;
+      document.getElementById(val)?.scrollIntoView({ behavior: "smooth" });
+    },
+  });
+
+  const topbarActions = document.createElement("div");
+  topbarActions.className = "topbar-actions";
+
+  const npmBtn = createButton({
+    label: "npm v1.0.2",
+    bendsBackdrop: false,
+    onClick: () => window.open("https://www.npmjs.com/package/trueglass", "_blank", "noopener,noreferrer"),
+  });
+  npmBtn.element.classList.add("topbar-btn", "topbar-npm-btn");
+  npmBtn.element.title = "View trueglass on npm";
+
+  const ghBtn = createButton({
+    label: "GitHub",
+    iconHtml: GITHUB_SVG,
+    bendsBackdrop: false,
+    onClick: () => window.open("https://github.com/kicode01/trueglass", "_blank", "noopener,noreferrer"),
+  });
+  ghBtn.element.classList.add("topbar-btn", "topbar-gh-btn");
+
+  topbarActions.append(npmBtn.element, ghBtn.element);
+  topbarInner.append(logoMenu.element, navTabBar.element, topbarActions);
+  topbar.appendChild(topbarInner);
+  root.appendChild(topbar);
 
   // Floating TrueGlass "Back to Top" button (optically materializes once scrolled past hero)
   const UP_ARROW_SVG = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>`;
@@ -379,6 +440,7 @@ function mountApp(): void {
     iconHtml: UP_ARROW_SVG,
     iconOnly: true,
     ariaLabel: "Back to top",
+    bendsBackdrop: false,
     materializeOnMount: false,
     onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
   });
@@ -394,6 +456,18 @@ function mountApp(): void {
   // 1. Hero Header + Spec Strip
   const heroBlock = document.createElement("div");
   heroBlock.className = "hero-block";
+
+  const heroHeader = document.createElement("div");
+  heroHeader.className = "hero-header";
+
+  const heroIcon = document.createElement("img");
+  heroIcon.className = "hero-icon";
+  heroIcon.src = "/icon.png";
+  heroIcon.alt = "";
+  heroIcon.width = 62;
+  heroIcon.height = 62;
+  heroIcon.draggable = false;
+  heroIcon.decoding = "async";
 
   const titleHeading = document.createElement("h1");
   titleHeading.className = "title-wrap";
@@ -443,7 +517,7 @@ function mountApp(): void {
   const intro = document.createElement("p");
   intro.className = "intro";
   intro.textContent =
-    "Zero-dependency TypeScript optical glass engine and UI suite — real-time Snell’s law squircle bezels, RGB chromatic dispersion, GPU tilt lighting, Clear ↔ Tinted continuum, C² droplet fusion, and adaptive luminance sensing.";
+    "Zero-dependency TypeScript optical glass engine and UI suite featuring real-time Snell's law squircle bezels, RGB chromatic dispersion, GPU tilt lighting, Clear ↔ Tinted continuum, C² droplet fusion, and adaptive luminance sensing.";
 
   const specStrip = document.createElement("div");
   specStrip.className = "spec-strip";
@@ -457,7 +531,8 @@ function mountApp(): void {
     <span class="spec-item"><strong>MIT</strong> licensed</span>
   `;
 
-  heroBlock.append(titleHeading, intro, specStrip);
+  heroHeader.append(heroIcon, titleHeading);
+  heroBlock.append(heroHeader, intro, specStrip);
   main.appendChild(heroBlock);
 
   const titleTextEl = titleHeading.querySelector<HTMLElement>(".title-text");
@@ -561,7 +636,9 @@ function mountApp(): void {
 
   const stageHint = document.createElement("div");
   stageHint.className = "stage-hint";
-  stageHint.textContent = "Drag backdrop · Hold tabs, slider, or switch to lift";
+  stageHint.textContent = isMobileDevice()
+    ? "Drag backdrop · Hold controls to lift"
+    : "Drag backdrop · Hold tabs, slider, or switch to lift";
 
   stageEl.append(scroller, stageOverlay, stageThemeCtrl, stageHint);
 
@@ -637,7 +714,9 @@ function mountApp(): void {
     const e = magHover.value;
     const sx = (1 + 0.08 * 0.2 * magHover.speed) * (1 + magDx.value) * (1 - magDy.value);
     const sy = (0.8 + 0.2 * e) * (1 + magDy.value) * (1 - magDx.value);
-    lensGlass.element.style.transform = `translate(${magPos.x - 105}px, ${magPos.y - 75}px) scale(${sx}, ${sy})`;
+    const halfW = (lensGlass.element.offsetWidth || 210) * 0.5;
+    const halfH = (lensGlass.element.offsetHeight || 150) * 0.5;
+    lensGlass.element.style.transform = `translate(${magPos.x - halfW}px, ${magPos.y - halfH}px) scale(${sx}, ${sy})`;
     lensGlass.element.style.boxShadow =
       `${4 * e}px ${4 + 12 * e}px ${9 + 15 * e}px rgb(0 0 0 / ${0.16 + 0.06 * e}), ` +
       `inset ${2 * e}px ${2 + 6 * e}px 24px rgb(0 0 0 / ${0.2 + 0.07 * e}), ` +
@@ -682,6 +761,18 @@ function mountApp(): void {
     }
   };
   requestAnimationFrame(recenterMag);
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => {
+      const w = magnifierBox.clientWidth;
+      const h = magnifierBox.clientHeight;
+      if (w > 0 && h > 0) {
+        magPos.x = Math.min(w, Math.max(0, magPos.x));
+        magPos.y = Math.min(h, Math.max(0, magPos.y));
+        magPrev = { ...magPos };
+        paintMag();
+      }
+    }).observe(magnifierBox);
+  }
   magImg.addEventListener("load", () => {
     recenterMag();
     lensGlass.refit();
@@ -836,15 +927,16 @@ function mountApp(): void {
   const tiltModeRow = document.createElement("div");
   tiltModeRow.className = "setting";
   const tiltModeLabel = document.createElement("span");
-  tiltModeLabel.textContent = "Pointer Tilt Light";
+  tiltModeLabel.textContent = isMobileDevice() ? "Device Tilt Light" : "Pointer Tilt Light";
   const tiltModeState = document.createElement("span");
   tiltModeState.textContent = "Off";
   const tiltModeSwitch = createSwitch({
-    ariaLabel: "Pointer Tilt Light",
+    ariaLabel: isMobileDevice() ? "Device Tilt Light" : "Pointer Tilt Light",
     checked: false,
     onChange(on) {
       tiltModeState.textContent = on ? "On" : "Off";
       if (on) {
+        void requestTiltPermission();
         if (!stopVirtualTilt) {
           let lastShown = Math.round(currentLightAngle);
           setDynamicLightAngle(currentLightAngle, true);
@@ -1300,7 +1392,14 @@ function mountApp(): void {
   sunsetContent.appendChild(sunsetCanvas);
   sunsetScroller.appendChild(sunsetContent);
   let currentScene: "sunset-night" | "white-text" = "sunset-night";
-  paintSunsetNightCanvas(sunsetCanvas, currentScene);
+  let lastSunsetWidth = 0;
+  const repaintSunset = (force = false) => {
+    const targetW = Math.max(320, Math.min(760, Math.round(sunsetStage.clientWidth || 600)));
+    if (!force && Math.abs(targetW - lastSunsetWidth) < 8) return;
+    lastSunsetWidth = targetW;
+    paintSunsetNightCanvas(sunsetCanvas, currentScene, targetW);
+  };
+  repaintSunset(true);
 
   const sunsetScrollEdge = document.createElement("div");
   sunsetScrollEdge.className = "sunset-scroll-edge";
@@ -1309,11 +1408,13 @@ function mountApp(): void {
   telBar.className = "telemetry-bar";
   const telPill = createGlass({ className: "telemetry-pill" });
   telPill.element.textContent = "Y=-- | σ=-- | Shadow=--";
+  const nightScrollTarget = Math.round(SUNSET_CANVAS_H * 0.68);
+  const nightThreshold = Math.round(SUNSET_CANVAS_H * 0.42);
   const jumpBtn = createButton({
     label: "Scroll to Night",
     onClick: () => {
-      const deep = sunsetScroller.scrollTop > 650;
-      sunsetScroller.scrollTo({ top: deep ? 0 : 1080, behavior: "smooth" });
+      const deep = sunsetScroller.scrollTop > nightThreshold;
+      sunsetScroller.scrollTo({ top: deep ? 0 : nightScrollTarget, behavior: "smooth" });
     },
   });
   telBar.append(telPill.element, jumpBtn.element);
@@ -1344,12 +1445,17 @@ function mountApp(): void {
   const adaptiveSensor = attachAdaptiveBackdropSensor(
     sunsetStage,
     () => {
-      const canvasScale = sunsetCanvas.height / Math.max(1, sunsetCanvas.clientHeight || sunsetCanvas.height);
+      const cw = sunsetCanvas.width;
+      const ch = sunsetCanvas.height;
+      if (cw < 16 || ch < 24) return null;
+      const canvasScale = ch / Math.max(1, sunsetCanvas.clientHeight || ch);
       const hudCenterY = (sunsetScroller.scrollTop + Math.max(80, sunsetStage.clientHeight) - 46) * canvasScale;
-      const sy = Math.max(0, Math.min(sunsetCanvas.height - 24, Math.round(hudCenterY - 12)));
+      const sy = Math.max(0, Math.min(ch - 24, Math.round(hudCenterY - 12)));
+      const sx = Math.round(cw * 0.2);
+      const sw = Math.max(16, Math.min(cw - sx, Math.round(cw * 0.6)));
       const ctx = sunsetCanvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return null;
-      return analyzeBackdropPixels(ctx.getImageData(220, sy, 320, 24).data, 320, 24);
+      return analyzeBackdropPixels(ctx.getImageData(sx, sy, sw, 24).data, sw, 24);
     },
     {
       intervalMs: 0,
@@ -1369,17 +1475,26 @@ function mountApp(): void {
         const top = sunsetScroller.scrollTop;
         sunsetHud.dataset.minimized = top > 48 ? "true" : "false";
         const jumpLabel = jumpBtn.element.querySelector(".lg-button-label") ?? jumpBtn.element;
-        jumpLabel.textContent = top > 650 ? "Scroll to Sunset" : "Scroll to Night";
+        jumpLabel.textContent = top > nightThreshold ? "Scroll to Sunset" : "Scroll to Night";
         adaptiveSensor.update();
       });
     },
     { passive: true },
   );
-  requestAnimationFrame(() => adaptiveSensor.update());
+  requestAnimationFrame(() => {
+    repaintSunset();
+    adaptiveSensor.update();
+  });
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => {
+      repaintSunset();
+      adaptiveSensor.update();
+    }).observe(sunsetStage);
+  }
 
   // Repaint canvas text in crisp Inter once web fonts finish loading
   document.fonts?.ready.then(() => {
-    paintSunsetNightCanvas(sunsetCanvas, currentScene);
+    repaintSunset(true);
     adaptiveSensor.update();
   });
 
@@ -1392,7 +1507,7 @@ function mountApp(): void {
   addGroupLabel(sensorPanel, "Backdrop Scene");
   const scenePills = optionPills(["Sunset → Night", "Text ↔ Plain White"], "Sunset → Night", (m) => {
     currentScene = m === "Sunset → Night" ? "sunset-night" : "white-text";
-    paintSunsetNightCanvas(sunsetCanvas, currentScene);
+    repaintSunset(true);
     sunsetScroller.scrollTop = 0;
     sunsetHud.dataset.minimized = "false";
     adaptiveSensor.update();
@@ -1440,7 +1555,7 @@ function mountApp(): void {
     ),
   );
 
-  // Scroll-spy for the floating TrueGlass navigation capsule
+  // Scroll-spy synced to the floating TrueGlass navigation TabBar
   const sectionIds = ["refraction", "optics-lab", "droplet-fusion", "components", "adaptive"];
   const observedSections = sectionIds
     .map((id) => document.getElementById(id))
@@ -1452,6 +1567,7 @@ function mountApp(): void {
         for (const entry of entries) {
           visibleRatios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
         }
+        if (performance.now() < scrollLockUntil) return;
         let bestId = "";
         let bestRatio = 0;
         for (const id of sectionIds) {
@@ -1462,30 +1578,47 @@ function mountApp(): void {
           }
         }
         if (bestId && bestId !== activeSectionId) {
-          setActiveNav(bestId, false);
+          activeSectionId = bestId;
+          navTabBar.setValue(bestId);
         }
       },
       { rootMargin: "-90px 0px -45% 0px", threshold: [0, 0.15, 0.35, 0.6] },
     );
     for (const sec of observedSections) sectionObserver.observe(sec);
   }
-  requestAnimationFrame(() => setActiveNav(activeSectionId, true));
-  document.fonts?.ready.then(() => setActiveNav(activeSectionId, true));
-  window.addEventListener("resize", () => setActiveNav(activeSectionId, true), { passive: true });
 
   // Footer
   const footer = document.createElement("footer");
   footer.className = "site-footer";
   footer.innerHTML = `
-    <span>TrueGlass — Physically-based optical glass engine &amp; UI suite</span>
+    <span>TrueGlass · Physically-based optical glass engine &amp; UI suite</span>
     <span><a href="https://www.npmjs.com/package/trueglass" target="_blank" rel="noreferrer">npmjs.com/package/trueglass</a> · <a href="https://github.com/kicode01/trueglass" target="_blank" rel="noreferrer">github.com/kicode01/trueglass</a> · MIT License</span>
   `;
   main.appendChild(footer);
 
+  // Android / mobile dynamic virtual keyboard & orientation adaptation
+  if (typeof window !== "undefined") {
+    const vv = window.visualViewport;
+    if (vv) {
+      const syncViewport = () => {
+        const kbOpen = vv.height < window.innerHeight * 0.78;
+        document.documentElement.toggleAttribute("data-keyboard-open", kbOpen);
+      };
+      vv.addEventListener("resize", syncViewport, { passive: true });
+    }
+    window.addEventListener(
+      "orientationchange",
+      () => {
+        window.setTimeout(() => refitAllGlass(), 180);
+      },
+      { passive: true },
+    );
+  }
+
   requestAnimationFrame(() => {
     refitAllGlass();
     if (typeof location !== "undefined" && location.hash.length > 1) {
-      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "instant" });
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "auto" });
     }
   });
   void createInput;

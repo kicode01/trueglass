@@ -1,6 +1,17 @@
-import { boxUnits, lensField, shapeOf, tuningOf, type Lens, type LensOptions, type Shape } from "./lens";
+import {
+  getOpticalDpr,
+  lensField,
+  recordFrameTime,
+  refractsBackdrop,
+  shapeOf,
+  tuningOf,
+  type Lens,
+  type LensOptions,
+  type Shape,
+} from "./lens";
+import { onSpringActivity } from "./spring";
 
-export const drawsLens = (): boolean => boxUnits() && !!stage();
+export const drawsLens = (): boolean => !refractsBackdrop() && !!stage();
 
 const clamp = (value: number, min: number, max: number) => (value < min ? min : value > max ? max : value);
 
@@ -24,6 +35,7 @@ uniform vec2 origin;
 uniform float scale;
 uniform float reach;
 uniform float split;
+uniform float uFieldPacked;
 in vec2 st;
 out vec4 colour;
 
@@ -35,7 +47,8 @@ vec4 at(vec2 point) {
 
 void main() {
   vec2 point = st * size;
-  vec2 pull = texture(field, st).rg * reach;
+  vec2 rawPull = texture(field, st).rg;
+  vec2 pull = mix(rawPull, rawPull * 2.0 - 1.0, uFieldPacked) * reach;
   vec4 red = at(point - pull * (1.0 + 0.2 * split));
   vec4 green = at(point - pull * (1.0 + 0.1 * split));
   vec4 blue = at(point - pull);
@@ -51,8 +64,8 @@ out vec4 colour;
 void main() {
   vec4 sum = vec4(0.0);
   float total = 0.0;
-  for (int i = -8; i <= 8; i++) {
-    float x = float(i) * 0.375;
+  for (int i = -5; i <= 5; i++) {
+    float x = float(i) * 0.55;
     float weight = exp(-0.5 * x * x);
     sum += texture(under, st + stride * x) * weight;
     total += weight;
@@ -113,9 +126,9 @@ function stage(): Stage | null {
 function buildStage(): Stage | null {
   const canvas = document.createElement("canvas");
   const paper = document.createElement("canvas");
-  const gl = canvas.getContext?.("webgl2", { antialias: false, depth: false, stencil: false });
+  const gl = canvas.getContext?.("webgl2", { antialias: false, depth: false, stencil: false, powerPreference: "high-performance" });
   const pen = paper.getContext?.("2d");
-  if (!gl || !pen) return null;
+  if (!gl || typeof gl.createProgram !== "function" || !pen) return null;
 
   const step = (fragment: string, ...names: string[]): Step | null => {
     const program = gl.createProgram();
@@ -136,7 +149,7 @@ function buildStage(): Stage | null {
     return { program, at: Object.fromEntries(names.map((name) => [name, gl.getUniformLocation(program, name)])) };
   };
 
-  const bend = step(BEND, "size", "window", "origin", "scale", "reach", "split");
+  const bend = step(BEND, "size", "window", "origin", "scale", "reach", "split", "uFieldPacked");
   const soften = step(SOFTEN, "stride");
   const finish = step(FINISH, "saturation", "tint");
   if (!bend || !soften || !finish) return null;
@@ -145,8 +158,13 @@ function buildStage(): Stage | null {
   gl.enable(gl.SCISSOR_TEST);
   const under = createTexture(gl);
   const frame = gl.createFramebuffer();
-  canvas.addEventListener("webglcontextlost", () => {
+  canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
     shared = undefined;
+  });
+  canvas.addEventListener("webglcontextrestored", () => {
+    shared = undefined;
+    wakeTick();
   });
   const largest = Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)) || 4096;
   return { canvas, gl, bend, soften, finish, under, largest, drawn: new Map(), frame, paper, pen };
@@ -487,9 +505,18 @@ function getScene(source: HTMLElement): Scene {
   resizes.observe(source);
   window.addEventListener("resize", mark);
   source.addEventListener("load", mark, true);
+  source.addEventListener("transitionend", mark, true);
   document.fonts?.addEventListener?.("loadingdone", mark);
-  const theme = new MutationObserver(mark);
-  theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+  const theme = new MutationObserver((records) => {
+    for (const record of records) {
+      const t = record.target;
+      if (t === document.documentElement || (t instanceof Element && (t.contains(source) || source.contains(t)))) {
+        mark();
+        return;
+      }
+    }
+  });
+  theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"], subtree: true });
   const scheme = matchMedia("(prefers-color-scheme: dark)");
   scheme.addEventListener?.("change", mark);
   made.stop = () => {
@@ -499,6 +526,7 @@ function getScene(source: HTMLElement): Scene {
     resizes.disconnect();
     window.removeEventListener("resize", mark);
     source.removeEventListener("load", mark, true);
+    source.removeEventListener("transitionend", mark, true);
     document.fonts?.removeEventListener?.("loadingdone", mark);
     const { whole } = made;
     if (whole && whole.of === shared) whole.of.gl.deleteTexture(whole.texture);
@@ -619,7 +647,7 @@ function paintWhole(on: Stage, made: Scene, density: number): Whole | null {
   const { width, height } = made.from;
   if (!width || !height || made.pieces.some((piece) => piece.live)) return null;
   const finest = Math.min(density, on.largest / Math.max(width, height), Math.sqrt(WHOLE / (width * height)));
-  if (finest < Math.min(density, 2)) return null;
+  if (finest < Math.min(density, 1)) return null;
   const key = `${made.key}|${finest}`;
   let whole = made.whole;
   if (whole?.of === on && whole.key === key) return whole;
@@ -646,12 +674,14 @@ function tick(): void {
     return;
   }
   frames++;
+  const t0 = typeof performance !== "undefined" ? performance.now() : 0;
   let anyDrawn = false;
   for (const lens of drawnLenses) {
     if (lens.draw(frames)) anyDrawn = true;
   }
   if (anyDrawn) {
     drawnIdleFrames = 0;
+    if (t0 > 0) recordFrameTime(performance.now() - t0);
   } else {
     drawnIdleFrames++;
   }
@@ -668,6 +698,7 @@ function wakeTick(): void {
 function ensureTick(): void {
   if (!drawnVisBound && typeof document !== "undefined") {
     drawnVisBound = true;
+    onSpringActivity(wakeTick);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) wakeTick();
     });
@@ -694,6 +725,10 @@ function parseCssColour(pen: CanvasRenderingContext2D, colour: string): [number,
     const [r, g, b] = [1, 3, 5].map((at) => parseInt(value.slice(at, at + 2), 16) / 255);
     return [r!, g!, b!, 1];
   }
+  if (value.startsWith("color(")) {
+    const [r = 0, g = 0, b = 0, a = 1] = (value.match(/-?[\d.]+/g) ?? []).map(Number);
+    return [clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1), clamp(a, 0, 1)];
+  }
   const [r = 0, g = 0, b = 0, a = 1] = (value.match(/[\d.]+/g) ?? []).map(Number);
   return [r / 255, g / 255, b / 255, a];
 }
@@ -716,7 +751,16 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
   let fieldKey = "";
   let field: WebGLTexture | null = null;
   let fieldOf: Stage | null = null;
+  let fieldPacked = false;
   let last = "";
+
+  const releaseField = () => {
+    if (field && fieldOf && fieldOf === shared) {
+      fieldOf.gl.deleteTexture(field);
+    }
+    field = null;
+    fieldOf = null;
+  };
 
   const read = () => {
     const style = getComputedStyle(glass);
@@ -725,9 +769,9 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
     ({ reach, dispersion } = tuningOf(style, shape, options));
     const frost = parseFloat(style.getPropertyValue("--lg-blur"));
     blur = Number.isFinite(frost) ? frost : 3;
-    const density = Math.min(devicePixelRatio || 1, 2);
+    const density = getOpticalDpr("lens");
     const key = [shape.width, shape.height, shape.radius, density, JSON.stringify(options)].join("|");
-    if (key !== fieldKey) field = null;
+    if (key !== fieldKey) releaseField();
     fieldKey = key;
     last = "";
   };
@@ -737,14 +781,30 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
     let drawn = fieldCache.get(fieldKey);
     if (!drawn) {
       if (fieldCache.size > 32) fieldCache.clear();
-      const density = Math.min(devicePixelRatio || 1, 2);
+      const density = getOpticalDpr("lens");
       fieldCache.set(fieldKey, (drawn = lensField(shape!, options, density)));
     }
     const { gl } = on;
     gl.activeTexture(gl.TEXTURE1);
     field = createTexture(gl);
     fieldOf = on;
+    gl.getError();
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, drawn.columns, drawn.rows, 0, gl.RGBA, gl.FLOAT, drawn.data);
+    if (gl.getError() !== gl.NO_ERROR) {
+      // Universal RGBA8 fallback when half-float linear textures are unavailable on mobile/legacy drivers
+      const src = drawn.data;
+      const u8 = new Uint8Array(src.length);
+      for (let i = 0; i < src.length; i += 4) {
+        u8[i] = Math.round(clamp(src[i]! * 0.5 + 0.5, 0, 1) * 255);
+        u8[i + 1] = Math.round(clamp(src[i + 1]! * 0.5 + 0.5, 0, 1) * 255);
+        u8[i + 2] = Math.round(clamp(src[i + 2]!, 0, 1) * 255);
+        u8[i + 3] = Math.round(clamp(src[i + 3]!, 0, 1) * 255);
+      }
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, drawn.columns, drawn.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, u8);
+      fieldPacked = true;
+    } else {
+      fieldPacked = false;
+    }
     return field;
   };
 
@@ -764,7 +824,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
         return true;
       }
 
-      const density = Math.min(devicePixelRatio || 1, 3);
+      const density = getOpticalDpr("drawn");
       const scale = Math.min(at.width, at.height) / Math.min(shape.width, shape.height);
       const mat = clamp(amount, 0, 1);
       const pulled = reach * scale * 0.5 * amount;
@@ -853,6 +913,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       gl.uniform1f(bent.scale!, finer);
       gl.uniform1f(bent.reach!, pulled * density);
       gl.uniform1f(bent.split!, dispersion);
+      gl.uniform1f(bent.uFieldPacked!, fieldPacked ? 1.0 : 0.0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       const deviation = frost * density;
       if (deviation >= 0.2) {
@@ -906,6 +967,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
       wakeTick();
     },
     refit() {
+      made.stale = true;
       if (active) {
         read();
         wakeTick();
@@ -913,8 +975,7 @@ export function createDrawnLens(glass: HTMLElement, content: HTMLElement, option
     },
     destroy() {
       this.setActive(false);
-      if (field && fieldOf && fieldOf === shared) fieldOf.gl.deleteTexture(field);
-      field = null;
+      releaseField();
       if (made.lenses.size) return;
       made.stop();
       scenes.delete(content);

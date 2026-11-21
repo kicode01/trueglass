@@ -4,13 +4,24 @@ import {
   analyzeBackdropPixels,
   attachVirtualTiltLight,
   benchmarkOptics,
+  boxUnits,
   computeBezelProfile,
   concentricRadius,
   createSpring,
   distance,
   generateOpticalMaps,
+  getOpticalDpr,
+  getQualityTier,
+  getRuntimeQualityScale,
+  hapticTap,
+  isAndroid,
+  isSamsungInternet,
   lensField,
   lensMap,
+  prefersReducedMotion,
+  recordFrameTime,
+  refractsBackdrop,
+  requestTiltPermission,
   rimMap,
   sampleBezelProfile,
   setAccessibilityModes,
@@ -18,6 +29,7 @@ import {
   squircleNormal,
   squircleSDF,
   superellipseSDF,
+  svgContainer,
 } from "../src/core";
 import {
   createButton,
@@ -559,6 +571,80 @@ describe("Zero-Dependency Fluid Glass UI Components", () => {
     } finally {
       stop();
       setAccessibilityModes({ reduceMotion: false });
+    }
+  });
+
+  it("detects Chromium vs Firefox/Safari/iOS engines cleanly, anchors SVG defs fixed, and respects OS reduced motion", async () => {
+    const originalUA = navigator.userAgent;
+    const setUA = (ua: string) => Object.defineProperty(navigator, "userAgent", { configurable: true, value: ua });
+
+    try {
+      setUA("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+      expect(refractsBackdrop()).toBe(true);
+      expect(boxUnits()).toBe(false);
+      expect(isAndroid()).toBe(false);
+
+      // Desktop Edge, Opera, Brave, Vivaldi use Chromium GPU SVG backdrop-filter
+      setUA("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0");
+      expect(refractsBackdrop()).toBe(true);
+      setUA("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 OPR/116.0.0.0");
+      expect(refractsBackdrop()).toBe(true);
+
+      // Android Chrome & Samsung Internet route to GPU WebGL2 drawn lenses instead of buggy mobile SVG backdrop-filter
+      setUA("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36");
+      expect(isAndroid()).toBe(true);
+      expect(refractsBackdrop()).toBe(false);
+      expect(boxUnits()).toBe(false);
+      expect(getQualityTier()).not.toBe("high");
+      expect(getOpticalDpr("drawn")).toBeLessThanOrEqual(1.5);
+
+      setUA("Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0.0.0 Mobile Safari/537.36");
+      expect(isAndroid()).toBe(true);
+      expect(isSamsungInternet()).toBe(true);
+      expect(refractsBackdrop()).toBe(false);
+      expect(boxUnits()).toBe(false);
+
+      setUA("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0");
+      expect(refractsBackdrop()).toBe(false);
+      expect(boxUnits()).toBe(false);
+
+      setUA("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15");
+      expect(refractsBackdrop()).toBe(false);
+      expect(boxUnits()).toBe(true);
+
+      setUA("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.0.0 Mobile/15E148 Safari/604.1");
+      expect(refractsBackdrop()).toBe(false);
+      expect(boxUnits()).toBe(true);
+    } finally {
+      setUA(originalUA);
+    }
+
+    // Dynamic frame-budget scaling lowers quality under sustained slow frames and recovers when fast
+    for (let i = 0; i < 8; i++) recordFrameTime(34);
+    expect(getRuntimeQualityScale()).toBeLessThan(1);
+    for (let i = 0; i < 100; i++) recordFrameTime(8);
+    expect(getRuntimeQualityScale()).toBe(1);
+
+    // Android micro-haptics invoke navigator.vibrate safely when available
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, "vibrate", { configurable: true, value: vibrateMock });
+    hapticTap(8);
+    expect(vibrateMock).toHaveBeenCalledWith(8);
+    Object.defineProperty(navigator, "vibrate", { configurable: true, value: undefined });
+
+    const defs = svgContainer();
+    const svgRoot = defs.parentElement as unknown as SVGSVGElement;
+    expect(svgRoot.style.position).toBe("fixed");
+    expect(svgRoot.style.overflow).toBe("hidden");
+
+    expect(await requestTiltPermission()).toBe(true);
+
+    const origMM = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia;
+    try {
+      expect(prefersReducedMotion()).toBe(true);
+    } finally {
+      window.matchMedia = origMM;
     }
   });
 });

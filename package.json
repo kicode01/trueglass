@@ -1,6 +1,6 @@
 {
   "name": "trueglass",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
   "license": "MIT",
   "description": "Zero-dependency physically-based TrueGlass optical engine and UI component suite for the web.",

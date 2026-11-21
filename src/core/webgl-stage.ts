@@ -308,8 +308,9 @@ void main() {
   float bendProfile = 0.0;
   if (t < 1.0) {
     float inv = 1.0 - t;
-    float z = pow(max(0.001, 1.0 - pow(inv, 4.0)), 0.25);
-    float inc = atan(pow(inv, 3.0) / pow(z, 3.0));
+    float inv2 = inv * inv;
+    float z = pow(max(0.001, 1.0 - inv2 * inv2), 0.25);
+    float inc = atan((inv2 * inv) / max(0.001, z * z * z));
     float refr = asin(clamp(sin(inc) / max(1.01, uIor), -0.999, 0.999));
     bendProfile = tan(inc - refr) * (0.6 + z) * 0.55;
   }
@@ -330,7 +331,7 @@ void main() {
   // Dynamic tilt-reactive Fresnel specular rim
   vec2 lDir = vec2(cos(uLightAngle), sin(uLightAngle));
   float dotL = dot(nrm, lDir);
-  float rimFacing = pow(max(dotL, 0.0) + max(-dotL, 0.0) * 0.4, 1.8);
+  float rimFacing = pow(max(1e-4, max(dotL, 0.0) + max(-dotL, 0.0) * 0.4), 1.8);
   float rimAlpha = clamp((1.5 - depth) / 1.5, 0.0, 1.0) * rimFacing * uRimShine * uBend;
 
   vec3 finalCol = mix(col, vec3(0.97, 0.98, 1.0), uTint * 0.35);

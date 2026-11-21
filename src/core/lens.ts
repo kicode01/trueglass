@@ -413,10 +413,110 @@ function encodeMaps(key: string, draw: () => LensMap): EncodedMaps | null {
   return result;
 }
 
+export type QualityTier = "high" | "balanced" | "eco";
+
+export const isAndroid = (): boolean =>
+  typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+
+export const isIOS = (): boolean =>
+  typeof navigator !== "undefined" &&
+  (/iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1));
+
+export const isSamsungInternet = (): boolean =>
+  typeof navigator !== "undefined" && /SamsungBrowser\//i.test(navigator.userAgent);
+
+export const isCoarsePointer = (): boolean =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(pointer: coarse)").matches;
+
+export const isMobileDevice = (): boolean => isAndroid() || isIOS() || isCoarsePointer();
+
+/**
+ * Desktop Chromium (Chrome, Edge, Brave, Arc, Opera, Vivaldi) supports GPU-accelerated
+ * `backdrop-filter: url(#svg)`. Android Chromium, Samsung Internet, Firefox, Safari, and
+ * iOS WebKit browsers route instead to the GPU WebGL2 drawn-lens path for 60–120fps parity.
+ */
+export const refractsBackdrop = (): boolean => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (!/Chrom(?:e|ium)|Edg\//.test(ua)) return false;
+  if (/Android|SamsungBrowser\/|CriOS|FxiOS|EdgiOS|EdgA\//.test(ua)) return false;
+  return true;
+};
+
 export const boxUnits = (): boolean =>
   typeof navigator !== "undefined" &&
   /AppleWebKit\//.test(navigator.userAgent) &&
-  !/Chrom(?:e|ium)\//.test(navigator.userAgent);
+  !/Chrom(?:e|ium)|Android/.test(navigator.userAgent);
+
+/** Evaluates device hardware signals (memory, cores, Save-Data, reduced motion) dynamically. */
+export function getQualityTier(): QualityTier {
+  if (typeof navigator === "undefined") return "high";
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: { saveData?: boolean };
+  };
+  const reduced =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || nav.connection?.saveData) return "eco";
+  const mem = nav.deviceMemory;
+  const cores = nav.hardwareConcurrency;
+  if ((typeof mem === "number" && mem <= 2) || (typeof cores === "number" && cores > 0 && cores <= 2)) {
+    return "eco";
+  }
+  if (isMobileDevice() || (typeof mem === "number" && mem <= 4) || (typeof cores === "number" && cores > 0 && cores <= 4)) {
+    return "balanced";
+  }
+  return "high";
+}
+
+let runtimeQualityScale = 1;
+let slowFrames = 0;
+let fastFrames = 0;
+
+/** Dynamically adapts WebGL resolution scale on mobile/Android GPUs if interactive frame times spike. */
+export function recordFrameTime(frameMs: number): void {
+  if (!Number.isFinite(frameMs) || frameMs <= 0) return;
+  if (frameMs > 26) {
+    slowFrames++;
+    fastFrames = 0;
+    if (slowFrames >= 8 && runtimeQualityScale > 0.78) {
+      runtimeQualityScale = Math.max(0.75, runtimeQualityScale - 0.12);
+      slowFrames = 0;
+    }
+  } else if (frameMs < 15) {
+    fastFrames++;
+    slowFrames = 0;
+    if (fastFrames >= 45 && runtimeQualityScale < 1) {
+      runtimeQualityScale = Math.min(1, runtimeQualityScale + 0.08);
+      fastFrames = 0;
+    }
+  }
+}
+
+export const getRuntimeQualityScale = (): number => runtimeQualityScale;
+
+export function getOpticalDpr(kind: "lens" | "drawn" | "title" | "rim" = "drawn"): number {
+  const raw = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const tier = getQualityTier();
+  const cap =
+    tier === "eco"
+      ? kind === "title"
+        ? 1.25
+        : 1
+      : tier === "balanced"
+        ? kind === "title"
+          ? 1.75
+          : 1.5
+        : 2;
+  const base = kind === "title" && tier === "high" ? Math.max(raw, 1.5) : raw;
+  const scaled = kind === "drawn" ? Math.min(base, cap) * runtimeQualityScale : Math.min(base, cap);
+  return Math.max(1, Number(scaled.toFixed(2)));
+}
 
 const CHANNELS = [
   "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0",
@@ -617,7 +717,7 @@ function buildFilterGraph(lenses: BendSpec[], box: boolean, standIn: boolean): F
         yChannelSelector: "R",
         result: `ray-${k}-${i}`,
       });
-      boxed.push(across);
+      boxed.push(across, down);
       filter.append(across, down);
       return [across, down];
     });
@@ -767,8 +867,10 @@ function fitLens(glass: HTMLElement, options: LensOptions): FitResult | null {
   const { width, height, radius } = shape;
   const { reach, dispersion, page } = tuningOf(style, shape, options);
   const shine = options.paintsLight ? 0 : options.shine === undefined ? page : Math.sign(page || 1) * options.shine;
-  const baseDensity = typeof window !== "undefined" ? Math.min(devicePixelRatio || 1, 2) : 1;
-  const density = width * height > 32000 ? 1 : baseDensity;
+  const tier = getQualityTier();
+  const baseDensity = getOpticalDpr("lens");
+  const areaLimit = tier === "eco" ? 12000 : tier === "balanced" ? 20000 : 32000;
+  const density = width * height > areaLimit ? 1 : baseDensity;
   const baseTheme = page < 0 && !options.paintsLight ? LIGHT_LIGHT : DARK_LIGHT;
   const light: Light = {
     ...baseTheme,

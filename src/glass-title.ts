@@ -1,3 +1,4 @@
+import { getOpticalDpr } from "./core/lens";
 import { createSpring } from "./core/spring";
 
 const VERT_SRC = `#version 300 es
@@ -24,6 +25,11 @@ uniform float uScale;       // texels per CSS px
 uniform vec2 uTilt;         // normalized pointer tilt [-1..1]
 uniform float uTime;        // subtle ambient phase
 
+// Safe square helper (GLSL ES 3.00 pow(x, 2.0) is undefined / NaN for x < 0 on Adreno, Mali & Metal)
+float sq(float x) {
+  return x * x;
+}
+
 // High-contrast dark-studio softbox environment map (pure clear crystal glass, never opaque metal)
 vec3 sampleStudioReflection(vec3 R, vec2 uv) {
   vec2 shift = uTilt * vec2(0.26, 0.20);
@@ -35,22 +41,22 @@ vec3 sampleStudioReflection(vec3 R, vec2 uv) {
   // 1. Crisp diagonal overhead-left studio softbox strip (-135 deg: catches tops AND vertical stems)
   float diagKey = -(r.x * 0.56 + r.y * 0.83);
   float keyBand = smoothstep(0.20, 0.50, diagKey) * smoothstep(0.99, 0.72, diagKey);
-  float keyGlint = exp(-pow((diagKey - 0.56) * 9.5, 2.0));
+  float keyGlint = exp(-sq((diagKey - 0.56) * 9.5));
   env += vec3(0.99, 0.995, 1.0) * (keyBand * 0.88 + keyGlint * 1.30);
 
   // 2. Crisp vertical left rim softbox (gives T, r, u, l vertical stems sharp glassy meniscus)
-  float leftStrip = exp(-pow((r.x + 0.60 - r.y * 0.10) * 9.5, 2.0)) * smoothstep(0.60, -0.58, r.y);
+  float leftStrip = exp(-sq((r.x + 0.60 - r.y * 0.10) * 9.5)) * smoothstep(0.60, -0.58, r.y);
   env += vec3(0.92, 0.97, 1.0) * leftStrip * 0.96;
 
   // 3. Lower-right crystalline bounce arc (signature liquid-glass dual-sided refraction)
   float diagBounce = r.x * 0.48 + r.y * 0.88;
   float botStrip = smoothstep(0.24, 0.56, diagBounce) * smoothstep(0.99, 0.75, diagBounce);
-  float botGlint = exp(-pow((diagBounce - 0.60) * 9.2, 2.0));
+  float botGlint = exp(-sq((diagBounce - 0.60) * 9.2));
   env += vec3(0.72, 0.89, 1.0) * (botStrip * 0.56 + botGlint * 0.98);
 
   // 4. Razor-thin glossy studio horizon line curving gently across letter bowls
   float horizonCurve = r.y + 0.08 - 0.14 * r.x + 0.03 * sin(uv.x * 5.2 + uTime);
-  float horizonGlint = exp(-pow(horizonCurve * 20.0, 2.0));
+  float horizonGlint = exp(-sq(horizonCurve * 20.0));
   env += vec3(0.86, 0.94, 1.0) * horizonGlint * 0.34;
 
   return env;
@@ -59,8 +65,10 @@ vec3 sampleStudioReflection(vec3 R, vec2 uv) {
 // Subtle optical light caustic field refracted internally across the curved glass walls
 float sampleCausticField(vec2 p, vec2 tilt) {
   float wave = p.y - (0.55 - 0.30 * p.x + 0.06 * sin(p.x * 4.4 + tilt.x * 0.7));
-  float ribbon = exp(-pow(wave * 4.4, 2.0));
-  float sweep = pow(clamp(0.5 + 0.5 * sin((p.x * 2.8 - p.y * 1.7 + tilt.x * 0.45) * 3.14159), 0.0, 1.0), 4.0);
+  float ribbon = exp(-sq(wave * 4.4));
+  float sweepBase = clamp(0.5 + 0.5 * sin((p.x * 2.8 - p.y * 1.7 + tilt.x * 0.45) * 3.14159), 0.0, 1.0);
+  float sweep2 = sweepBase * sweepBase;
+  float sweep = sweep2 * sweep2;
   return 0.22 + 0.58 * ribbon + 0.32 * sweep;
 }
 
@@ -112,7 +120,7 @@ void main() {
 
   // Authentic Schlick Fresnel for clear optical glass (n = 1.52 => F0 = 0.0426)
   // Keeps interior center genuinely dark/clear while curved glass edges blaze cleanly!
-  float fresnel = 0.0426 + 0.9574 * pow(1.0 - NdotV, 3.05);
+  float fresnel = 0.0426 + 0.9574 * pow(max(1e-4, 1.0 - NdotV), 3.05);
 
   // Studio softbox reflection with crisp optical chromatic fringe at grazing angles
   vec3 reflDir = reflect(-V, N);
@@ -151,7 +159,7 @@ void main() {
   // Genuinely dark, translucent crystal glass body (NOT opaque silver chrome!)
   // Faint upper skylight tint + dark internal optical absorption channel just inside the rim
   float depthCss = max(0.0, -sdfPx);
-  float wallAbsorption = exp(-pow((depthCss - 1.75) / 0.85, 2.0));
+  float wallAbsorption = exp(-sq((depthCss - 1.75) / 0.85));
   float clearSkylight = 0.072 + 0.088 * smoothstep(0.95, 0.06, uv.y) * h;
   vec3 crystalCore = vec3(0.62, 0.78, 0.96) * clearSkylight * (1.0 - 0.56 * wallAbsorption);
 
@@ -163,16 +171,16 @@ void main() {
     max(0.0, tirR - tirG) * 0.98,
     max(0.0, tirG - tirB) * 0.48 + max(0.0, tirB - tirG) * 0.44,
     max(0.0, tirB - tirR) * 1.30
-  ) * (0.35 + 0.65 * pow(1.0 - NdotV, 1.8)) * 0.66;
+  ) * (0.35 + 0.65 * pow(max(1e-4, 1.0 - NdotV), 1.8)) * 0.66;
 
   // Tight, razor-glossy wet meniscus specular glints (high exponent = clear wet glass, zero matte chrome)
   vec3 L1 = normalize(vec3(-0.54 + uTilt.x * 0.32, -0.68 + uTilt.y * 0.24, 0.50));
   vec3 H1 = normalize(L1 + V);
-  float specWetKey = pow(max(dot(N, H1), 0.0), 72.0) * 1.50;
+  float specWetKey = pow(max(dot(N, H1), 1e-4), 72.0) * 1.50;
 
   vec3 L2 = normalize(vec3(0.52 - uTilt.x * 0.22, 0.66 - uTilt.y * 0.18, 0.54));
   vec3 H2 = normalize(L2 + V);
-  float specWetBounce = pow(max(dot(N, H2), 0.0), 38.0) * 0.66;
+  float specWetBounce = pow(max(dot(N, H2), 1e-4), 38.0) * 0.66;
 
   // Pure Fresnel-weighted glass composition:
   // Center (NdotV ~ 1): dark transparent crystalCore + crisp internal caustics
@@ -189,7 +197,7 @@ void main() {
   float topLeftFace = clamp(dot(n2, keyDir2), 0.0, 1.0);
   float botRightFace = clamp(dot(n2, -keyDir2), 0.0, 1.0);
   float aniso = 1.0 + 0.08 * (n2.y * n2.y - n2.x * n2.x);
-  float rimStrength = (0.34 + 0.74 * pow(topLeftFace, 1.12) + 0.58 * pow(botRightFace, 1.25)) * aniso;
+  float rimStrength = (0.34 + 0.74 * pow(max(1e-4, topLeftFace), 1.12) + 0.58 * pow(max(1e-4, botRightFace), 1.25)) * aniso;
   vec3 rimColor = mix(vec3(0.84, 0.94, 1.0), vec3(1.0), topLeftFace);
   glassCol = mix(glassCol, rimColor, clamp(rimBand * rimStrength, 0.0, 0.98));
 
@@ -449,7 +457,7 @@ export function mountGlassTitle(heading: HTMLElement, textEl: HTMLElement, text:
     const fontWeight = style.fontWeight || "700";
     const fontFamily = style.fontFamily || "Inter, sans-serif";
     const letterSpacing = style.letterSpacing || "normal";
-    const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
+    const dpr = getOpticalDpr("title");
 
     const key = `${boxW}x${boxH}|${fontSize}|${fontWeight}|${fontFamily}|${letterSpacing}|${dpr}`;
     if (!force && key === lastKey) return;
@@ -571,14 +579,28 @@ export function mountGlassTitle(heading: HTMLElement, textEl: HTMLElement, text:
     draw();
   };
 
-  // Interactive subtle studio light tilt as pointer glides over the hero header
+  let inView = true;
+  let io: IntersectionObserver | null = null;
+  if (typeof IntersectionObserver !== "undefined") {
+    io = new IntersectionObserver(
+      (entries) => {
+        inView = entries[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0 },
+    );
+    io.observe(heading);
+  }
+
+  // Interactive subtle studio light tilt as pointer glides or Android/mobile device tilts
   const onPointerMove = (e: PointerEvent) => {
-    if (destroyed || isReducedMotion()) return;
+    if (destroyed || !inView || isReducedMotion() || e.pointerType === "touch") return;
     const r = heading.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
     const cx = r.left + r.width * 0.5;
     const cy = r.top + r.height * 0.5;
     const nx = Math.max(-1, Math.min(1, (e.clientX - cx) / Math.max(240, r.width * 0.85)));
     const ny = Math.max(-1, Math.min(1, (e.clientY - cy) / 220));
+    if (Math.abs(nx - tiltX.target()) < 0.02 && Math.abs(ny - tiltY.target()) < 0.02) return;
     tiltX.set(nx);
     tiltY.set(ny);
   };
@@ -589,9 +611,40 @@ export function mountGlassTitle(heading: HTMLElement, textEl: HTMLElement, text:
     tiltY.set(0);
   };
 
+  const onDeviceOrientation = (e: DeviceOrientationEvent) => {
+    if (destroyed || !inView || document.hidden || isReducedMotion()) return;
+    if (e.gamma === null || e.beta === null) return;
+    const angle = (typeof screen !== "undefined" && screen.orientation?.angle) || 0;
+    let gx = e.gamma;
+    let gy = e.beta - 40;
+    if (angle === 90) {
+      gx = e.beta - 40;
+      gy = -e.gamma;
+    } else if (angle === 270 || angle === -90) {
+      gx = -(e.beta - 40);
+      gy = e.gamma;
+    } else if (angle === 180) {
+      gx = -e.gamma;
+      gy = -(e.beta - 40);
+    }
+    const nx = Math.max(-1, Math.min(1, gx / 32));
+    const ny = Math.max(-1, Math.min(1, gy / 32));
+    if (Math.abs(nx - tiltX.target()) < 0.03 && Math.abs(ny - tiltY.target()) < 0.03) return;
+    tiltX.set(nx);
+    tiltY.set(ny);
+  };
+
+  const onContextLost = (e: Event) => {
+    e.preventDefault();
+    hasField = false;
+    heading.removeAttribute("data-glass-ready");
+  };
+  canvas.addEventListener("webglcontextlost", onContextLost);
+
   const heroScope = heading.closest(".hero-block") ?? heading.parentElement ?? document.documentElement;
   heroScope.addEventListener("pointermove", onPointerMove as EventListener, { passive: true });
   heroScope.addEventListener("pointerleave", onPointerLeave as EventListener, { passive: true });
+  window.addEventListener("deviceorientation", onDeviceOrientation, { passive: true });
 
   let ro: ResizeObserver | null = null;
   if (typeof ResizeObserver !== "undefined") {
@@ -600,25 +653,27 @@ export function mountGlassTitle(heading: HTMLElement, textEl: HTMLElement, text:
   }
 
   const onFontsReady = () => {
-    if (!destroyed) bakeField(true);
+    if (!destroyed) bakeField(false);
   };
   if (document.fonts && typeof document.fonts.ready?.then === "function") {
     document.fonts.ready.then(onFontsReady);
     document.fonts.addEventListener?.("loadingdone", onFontsReady);
   }
 
-  // Initial synchronous + post-layout bake
-  bakeField(true);
-  requestAnimationFrame(() => bakeField(false));
+  // Initial synchronous bake (ResizeObserver / fonts.ready only re-bake if dimensions or metrics change)
+  bakeField(false);
 
   return () => {
     destroyed = true;
     if (drawRaf) cancelAnimationFrame(drawRaf);
     tiltX.stop();
     tiltY.stop();
+    io?.disconnect();
     ro?.disconnect();
     heroScope.removeEventListener("pointermove", onPointerMove as EventListener);
     heroScope.removeEventListener("pointerleave", onPointerLeave as EventListener);
+    window.removeEventListener("deviceorientation", onDeviceOrientation);
+    canvas.removeEventListener("webglcontextlost", onContextLost);
     document.fonts?.removeEventListener?.("loadingdone", onFontsReady);
     if (gl) {
       gl.deleteTexture(fieldTex);

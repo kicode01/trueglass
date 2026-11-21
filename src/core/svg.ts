@@ -14,7 +14,7 @@ export function svgEl(name: string, attributes: Record<string, string | number>)
 export function svgContainer(): SVGDefsElement {
   if (sharedDefs?.isConnected) return sharedDefs;
   const root = svgEl("svg", { width: 0, height: 0, "aria-hidden": "true" });
-  root.style.cssText = "position:absolute;pointer-events:none";
+  root.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;overflow:hidden;pointer-events:none";
   sharedDefs = svgEl("defs", {}) as SVGDefsElement;
   root.append(sharedDefs);
   (document.body || document.documentElement).append(root);

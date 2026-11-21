@@ -4,6 +4,9 @@ import {
   createBackdropLens,
   createLens,
   createSpring,
+  getOpticalDpr,
+  getQualityTier,
+  hapticTap,
   materializeAllRefractions,
   refitAllRefractions,
   refractsBackdrop,
@@ -70,6 +73,7 @@ export interface GlassOptions {
   className?: string;
   tag?: keyof HTMLElementTagNameMap;
   interactive?: boolean;
+  bendsBackdrop?: boolean;
   materializeOnMount?: boolean;
   material?: GlassMaterial;
   dimmingScrim?: boolean;
@@ -78,7 +82,7 @@ export interface GlassOptions {
 export function createGlass(options: GlassOptions = {}): GlassHandle<HTMLElement> {
   const element = makeEl(options.tag ?? "div", `lg-glass ${options.className ?? ""}`.trim());
   applyGlassMaterial(element, options.material ?? "regular", Boolean(options.dimmingScrim));
-  const refraction = attachRefraction(element, false, true, options.materializeOnMount);
+  const refraction = attachRefraction(element, false, options.bendsBackdrop ?? true, options.materializeOnMount);
   const stopPress = options.interactive ? attachInteractivePress(element) : null;
 
   return {
@@ -110,6 +114,7 @@ export interface ButtonOptions {
   tint?: string;
   iconOnly?: boolean;
   disabled?: boolean;
+  bendsBackdrop?: boolean;
   materializeOnMount?: boolean;
   onClick?: (ev: MouseEvent) => void;
 }
@@ -136,7 +141,7 @@ export function createButton(options: ButtonOptions): GlassHandle<HTMLButtonElem
   if (options.disabled) btn.disabled = true;
   if (options.onClick) btn.addEventListener("click", options.onClick);
 
-  const refraction = attachRefraction(btn, false, true, options.materializeOnMount);
+  const refraction = attachRefraction(btn, false, options.bendsBackdrop ?? true, options.materializeOnMount);
   const stopPress = attachInteractivePress(btn, { disabledCheck: () => btn.disabled });
 
   return {
@@ -249,10 +254,11 @@ export function createSwitch(options: SwitchOptions): SwitchHandle {
     colorSpring.set(checked ? 1 : 0);
   };
 
-  const setCheckedInternal = (next: boolean) => {
+  const setCheckedInternal = (next: boolean, fromUser = false) => {
     if (next === checked) return;
     checked = next;
     btn.setAttribute("aria-checked", String(checked));
+    if (fromUser) hapticTap(8);
     options.onChange?.(checked);
     sync();
   };
@@ -266,7 +272,7 @@ export function createSwitch(options: SwitchOptions): SwitchHandle {
       sync();
       return;
     }
-    setCheckedInternal(next);
+    setCheckedInternal(next, true);
   };
 
   const onDown = (event: PointerEvent) => {
@@ -330,7 +336,7 @@ export function createSwitch(options: SwitchOptions): SwitchHandle {
 
   const onClick = () => {
     if (ignoreClick) ignoreClick = false;
-    else if (!btn.disabled) setCheckedInternal(!checked);
+    else if (!btn.disabled) setCheckedInternal(!checked, true);
   };
 
   btn.addEventListener("pointerdown", onDown);
@@ -456,7 +462,9 @@ export function createSlider(options: SliderOptions): SliderHandle {
   const ends = ["pointerup", "pointercancel", "lostpointercapture", "blur"] as const;
 
   const onInputEvent = () => {
-    value = Number(input.value);
+    const next = Number(input.value);
+    if (next !== value && step >= 5) hapticTap(4);
+    value = next;
     updateProgress(value);
     options.onInput?.(value);
   };
@@ -464,6 +472,8 @@ export function createSlider(options: SliderOptions): SliderHandle {
   input.addEventListener("pointerdown", hold);
   ends.forEach((t) => input.addEventListener(t, release));
   window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  input.addEventListener("change", release);
   input.addEventListener("input", onInputEvent);
 
   return {
@@ -488,6 +498,8 @@ export function createSlider(options: SliderOptions): SliderHandle {
       input.removeEventListener("pointerdown", hold);
       ends.forEach((t) => input.removeEventListener(t, release));
       window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+      input.removeEventListener("change", release);
       input.removeEventListener("input", onInputEvent);
     },
   };
@@ -726,7 +738,10 @@ function createSegmentsComponent(opts: SegmentsOptions): SegmentsHandle {
       lensedCopies[i]?.toggleAttribute("data-selected", sel);
     });
     settle(instant);
-    if (changed && notify) opts.onChange?.(opts.items[activeIdx]!.value);
+    if (changed && notify) {
+      hapticTap(6);
+      opts.onChange?.(opts.items[activeIdx]!.value);
+    }
   };
 
   const position = (event: PointerEvent) =>
@@ -1088,7 +1103,23 @@ export function createMenu(options: MenuOptions): MenuHandle {
     leaving = false;
     card.hidden = false;
     card.dataset.phase = "open";
+    card.style.marginLeft = "";
     trigger.setAttribute("aria-expanded", "true");
+
+    // Keep menu card inside the horizontal visual viewport on narrow/Android mobile screens
+    if (typeof window !== "undefined") {
+      const vw = window.visualViewport?.width || window.innerWidth;
+      if (vw > 0) {
+        const box = card.getBoundingClientRect();
+        const pad = 12;
+        if (box.right > vw - pad) {
+          const shift = Math.max(pad - box.left, vw - pad - box.right);
+          card.style.marginLeft = `${Math.round(shift)}px`;
+        } else if (box.left < pad) {
+          card.style.marginLeft = `${Math.round(pad - box.left)}px`;
+        }
+      }
+    }
 
     from = { width: trigger.offsetWidth || 40, height: trigger.offsetHeight || 40 };
     to = { width: card.offsetWidth || 210, height: card.offsetHeight || 180 };
@@ -1139,6 +1170,15 @@ export function createMenu(options: MenuOptions): MenuHandle {
     ySpring.set(rubberResistance(ev.clientY - gesture.y), true);
   };
 
+  const activateRow = (row: HTMLButtonElement | null) => {
+    if (!row) return;
+    const matched = itemEntries.find((item) => item.btn === row);
+    if (!matched) return;
+    hapticTap(6);
+    close();
+    matched.entry.onSelect?.();
+  };
+
   const onEnd = (ev: PointerEvent) => {
     if (ev.pointerId !== gesture?.id) return;
     const chosen = ev.type === "pointerup" ? rowAt(ev.clientX, ev.clientY) : null;
@@ -1149,16 +1189,13 @@ export function createMenu(options: MenuOptions): MenuHandle {
     xSpring.set(0);
     ySpring.set(0);
     suppressClickUntil = performance.now() + 500;
-    chosen?.click();
+    activateRow(chosen);
   };
 
   const onClick = (ev: MouseEvent) => {
     const row = (ev.target as Element).closest<HTMLButtonElement>(".lg-menu-item");
     if (!row || (ev.detail !== 0 && performance.now() < suppressClickUntil)) return;
-    const matched = itemEntries.find((item) => item.btn === row);
-    if (!matched) return;
-    close();
-    matched.entry.onSelect?.();
+    activateRow(row);
   };
 
   const onKey = (ev: KeyboardEvent) => {
@@ -1335,6 +1372,7 @@ uniform float uSmoothK;
 uniform float uTint;
 uniform vec2 uTouchPos;
 uniform float uTouchStrength;
+uniform float uQuality;
 in vec2 vUv;
 out vec4 outColor;
 
@@ -1342,9 +1380,14 @@ float sdSuperellipse(vec2 p, vec2 b, float r) {
   float rad = clamp(r, 0.0, min(b.x, b.y));
   vec2 q = abs(p) - b + rad;
   vec2 o = max(q, 0.0);
-  float edge = (o.x > 0.0 && o.y > 0.0)
-    ? pow(pow(o.x, 4.0) + pow(o.y, 4.0), 0.25)
-    : (o.x + o.y);
+  float edge;
+  if (o.x > 0.0 && o.y > 0.0) {
+    float ox2 = o.x * o.x;
+    float oy2 = o.y * o.y;
+    edge = pow(ox2 * ox2 + oy2 * oy2, 0.25);
+  } else {
+    edge = o.x + o.y;
+  }
   return edge + min(max(q.x, q.y), 0.0) - rad;
 }
 
@@ -1363,7 +1406,8 @@ float sceneSDF(vec2 px) {
 vec3 sampleBackdropPx(vec2 px) {
   if (uHasTex < 0.5) {
     vec2 uv = px / max(uSize, vec2(1.0));
-    float ridge = exp(-pow((uv.y - (0.62 - 0.34 * uv.x)) * 12.0, 2.0));
+    float ridgeD = (uv.y - (0.62 - 0.34 * uv.x)) * 12.0;
+    float ridge = exp(-(ridgeD * ridgeD));
     return mix(vec3(0.06, 0.08, 0.18), vec3(0.26, 0.38, 0.72), uv.y) + vec3(0.32, 0.44, 0.68) * ridge;
   }
   float aspect = max(0.5, uSize.x / max(1.0, uSize.y));
@@ -1375,6 +1419,15 @@ vec3 sampleBackdropPx(vec2 px) {
 
 vec3 sampleBlurBackdrop(vec2 px, float spread) {
   if (spread <= 0.25) return sampleBackdropPx(px);
+  if (uQuality < 0.5) {
+    // 5-tap bilinear diamond blur for mobile/Android GPUs (~45% fewer texture fetches)
+    vec3 sum = sampleBackdropPx(px) * 0.36;
+    sum += sampleBackdropPx(px + vec2( spread,  spread)) * 0.16;
+    sum += sampleBackdropPx(px + vec2(-spread,  spread)) * 0.16;
+    sum += sampleBackdropPx(px + vec2( spread, -spread)) * 0.16;
+    sum += sampleBackdropPx(px + vec2(-spread, -spread)) * 0.16;
+    return sum;
+  }
   vec3 sum = sampleBackdropPx(px) * 0.24;
   sum += sampleBackdropPx(px + vec2( spread,  spread)) * 0.14;
   sum += sampleBackdropPx(px + vec2(-spread,  spread)) * 0.14;
@@ -1418,8 +1471,9 @@ void main() {
   if (x < 0.998) {
     float xc = max(0.004, x);
     float inv = 1.0 - xc;
-    h = pow(max(0.001, 1.0 - pow(inv, 4.0)), 0.25);
-    float hp = min(4.2, pow(inv, 3.0) / max(0.01, pow(h, 3.0)));
+    float inv2 = inv * inv;
+    h = pow(max(0.001, 1.0 - inv2 * inv2), 0.25);
+    float hp = min(4.2, (inv2 * inv) / max(0.01, h * h * h));
     float inc = atan(hp);
     float refr = asin(clamp(sin(inc) / 1.50, -0.999, 0.999));
     bendProfile = tan(inc - refr) * (0.62 + h);
@@ -1442,8 +1496,8 @@ void main() {
   // Schlick Fresnel + anisotropic diagonal rim highlight (-135 deg primary + bounce highlight)
   vec2 lightDir = normalize(vec2(-0.7071, -0.7071));
   float dotL = dot(n2, lightDir);
-  float dualFacing = pow(abs(dotL), 1.35) * (1.0 + 0.08 * (n2.y * n2.y - n2.x * n2.x));
-  float fresnel = 0.04 + 0.96 * pow(1.0 - clamp(h, 0.0, 1.0), 3.2);
+  float dualFacing = pow(max(1e-4, abs(dotL)), 1.35) * (1.0 + 0.08 * (n2.y * n2.y - n2.x * n2.x));
+  float fresnel = 0.04 + 0.96 * pow(max(1e-4, 1.0 - clamp(h, 0.0, 1.0)), 3.2);
   float rimBand = smoothstep(2.4, 0.0, depth);
   float rimAlpha = clamp((0.18 + 0.48 * fresnel) * dualFacing * rimBand, 0.0, 0.85);
   glassCol = mix(glassCol, vec3(1.0), rimAlpha);
@@ -1567,6 +1621,7 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       "uTint",
       "uTouchPos",
       "uTouchStrength",
+      "uQuality",
     ]) {
       uniforms[name] = gl.getUniformLocation(prog, name);
     }
@@ -1588,26 +1643,29 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
     im.src = src;
   };
 
+  const pillWidth = () => (width < 320 ? Math.max(118, Math.round(width - 132)) : PILL_W);
+
   const computeCenters = () => {
-    const span = PILL_W + gap + ORB_W;
+    const pw = pillWidth();
+    const span = pw + gap + ORB_W;
     const leftEdge = (width - span) * 0.5;
     const cy = height * 0.5;
-    const ax = leftEdge + PILL_W * 0.5;
-    const bx = leftEdge + PILL_W + gap + ORB_W * 0.5;
-    return { ax, ay: cy, bx, by: cy };
+    const ax = leftEdge + pw * 0.5;
+    const bx = leftEdge + pw + gap + ORB_W * 0.5;
+    return { ax, ay: cy, bx, by: cy, pw };
   };
 
-  const syncDomPositions = (ax: number, ay: number, bx: number, by: number) => {
-    pillAEl.style.width = `${PILL_W}px`;
+  const syncDomPositions = (ax: number, ay: number, bx: number, by: number, pw: number) => {
+    pillAEl.style.width = `${pw}px`;
     pillAEl.style.height = `${PILL_H}px`;
-    pillAEl.style.transform = `translate(${(ax - PILL_W * 0.5).toFixed(1)}px, ${(ay - PILL_H * 0.5).toFixed(1)}px)`;
+    pillAEl.style.transform = `translate(${(ax - pw * 0.5).toFixed(1)}px, ${(ay - PILL_H * 0.5).toFixed(1)}px)`;
 
     orbBEl.style.width = `${ORB_W}px`;
     orbBEl.style.height = `${ORB_H}px`;
     orbBEl.style.transform = `translate(${(bx - ORB_W * 0.5).toFixed(1)}px, ${(by - ORB_H * 0.5).toFixed(1)}px)`;
   };
 
-  const renderFallback2D = (ax: number, ay: number, bx: number, by: number) => {
+  const renderFallback2D = (ax: number, ay: number, bx: number, by: number, pw: number) => {
     let ctx: CanvasRenderingContext2D | null = null;
     try {
       ctx = canvas.getContext("2d");
@@ -1623,10 +1681,12 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
     ctx.fillStyle = "#0b1120";
     ctx.fillRect(0, 0, width, height);
     if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
-      ctx.drawImage(imgEl, 0, height * 0.25, width, height * 0.5, 0, 0, width, height);
+      const iw = imgEl.naturalWidth;
+      const ih = imgEl.naturalHeight;
+      ctx.drawImage(imgEl, iw * 0.18, ih * 0.22, iw * 0.52, ih * 0.52, 0, 0, width, height);
     }
     const sdf = (px: number, py: number) => {
-      const d1 = superellipseSDF(px - ax, py - ay, PILL_W * 0.5, PILL_H * 0.5, 26, 4);
+      const d1 = superellipseSDF(px - ax, py - ay, pw * 0.5, PILL_H * 0.5, 26, 4);
       const d2 = superellipseSDF(px - bx, py - by, ORB_W * 0.5, ORB_H * 0.5, 26, 4);
       return sminCubic(d1, d2, smoothK);
     };
@@ -1651,11 +1711,11 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       height = rectH;
     }
 
-    const { ax, ay, bx, by } = computeCenters();
-    syncDomPositions(ax, ay, bx, by);
+    const { ax, ay, bx, by, pw } = computeCenters();
+    syncDomPositions(ax, ay, bx, by, pw);
 
     if (gl && prog) {
-      const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+      const dpr = getOpticalDpr("drawn");
       const cw = Math.max(2, Math.round(width * dpr));
       const ch = Math.max(2, Math.round(height * dpr));
       if (canvas.width !== cw || canvas.height !== ch) {
@@ -1671,7 +1731,7 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       }
       gl.uniform1f(uniforms.uHasTex!, hasTex ? 1.0 : 0.0);
       gl.uniform2f(uniforms.uSize!, width, height);
-      gl.uniform4f(uniforms.uPillA!, ax, ay, PILL_W * 0.5, PILL_H * 0.5);
+      gl.uniform4f(uniforms.uPillA!, ax, ay, pw * 0.5, PILL_H * 0.5);
       gl.uniform4f(uniforms.uPillB!, bx, by, ORB_W * 0.5, ORB_H * 0.5);
       gl.uniform1f(uniforms.uRadiusA!, PILL_H * 0.5);
       gl.uniform1f(uniforms.uRadiusB!, ORB_H * 0.5);
@@ -1679,11 +1739,12 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       gl.uniform1f(uniforms.uTint!, tint);
       gl.uniform2f(uniforms.uTouchPos!, touchX, touchY);
       gl.uniform1f(uniforms.uTouchStrength!, touchStrength);
+      gl.uniform1f(uniforms.uQuality!, getQualityTier() === "high" ? 1.0 : 0.0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       return;
     }
 
-    renderFallback2D(ax, ay, bx, by);
+    renderFallback2D(ax, ay, bx, by, pw);
   };
 
   const glowSpring = createSpring(0, 460, 34, (v) => {
@@ -1740,6 +1801,26 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
   root.addEventListener("pointerup", onEnd);
   root.addEventListener("pointercancel", onEnd);
 
+  const onContextLost = (ev: Event) => {
+    ev.preventDefault();
+    gl = null;
+    prog = null;
+    tex = null;
+    hasTex = false;
+  };
+  const onContextRestored = () => {
+    if (destroyed) return;
+    initGL();
+    if (gl && tex && imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imgEl);
+      hasTex = true;
+    }
+    render();
+  };
+  canvas.addEventListener("webglcontextlost", onContextLost);
+  canvas.addEventListener("webglcontextrestored", onContextRestored);
+
   const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(render) : null;
   ro?.observe(root);
 
@@ -1773,6 +1854,8 @@ export function createGlassContainer(options: GlassContainerOptions = {}): Glass
       if (raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
       glowSpring.stop();
       ro?.disconnect();
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored);
       root.removeEventListener("pointerdown", onDown);
       root.removeEventListener("pointermove", onMove);
       root.removeEventListener("pointerup", onEnd);

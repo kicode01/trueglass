@@ -17,8 +17,17 @@ interface SpringState {
 }
 
 const activeSprings = new Set<SpringState>();
+const activityListeners = new Set<() => void>();
 let rafId = 0;
 let lastTime = 0;
+
+export function onSpringActivity(fn: () => void): void {
+  activityListeners.add(fn);
+}
+
+function notifyActivity(): void {
+  for (const fn of activityListeners) fn();
+}
 
 /** Closed-form exact analytical solver for x'' + c x' + k(x - target) = 0. */
 export function advanceSpringState(s: Pick<SpringState, "value" | "target" | "velocity" | "stiffness" | "damping">, dt: number): void {
@@ -67,6 +76,7 @@ function tick(now: number): void {
     }
     s.onUpdate(s.value);
   }
+  notifyActivity();
 
   if (activeSprings.size > 0) {
     rafId = requestAnimationFrame(tick);
@@ -74,7 +84,14 @@ function tick(now: number): void {
 }
 
 export function prefersReducedMotion(): boolean {
-  return typeof document !== "undefined" && document.documentElement.getAttribute("data-a11y-motion") === "reduce";
+  if (typeof document !== "undefined" && document.documentElement.getAttribute("data-a11y-motion") === "reduce") {
+    return true;
+  }
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 }
 
 export const isReducedMotion = prefersReducedMotion;
@@ -106,9 +123,11 @@ export function createSpring(
         s.velocity = 0;
         activeSprings.delete(s);
         s.onUpdate(nextTarget);
+        notifyActivity();
         return;
       }
       activeSprings.add(s);
+      notifyActivity();
       if (!rafId && typeof requestAnimationFrame === "function") {
         lastTime = Number(
           (typeof document !== "undefined" && document.timeline?.currentTime) || performance.now(),

@@ -79,9 +79,9 @@ npm install trueglass
 Or use directly in browser modules via CDN:
 
 ```html
-<link rel="stylesheet" href="https://unpkg.com/trueglass@1.0.0/dist-lib/styles.css" />
+<link rel="stylesheet" href="https://unpkg.com/trueglass@1.0.2/dist-lib/styles.css" />
 <script type="module">
-  import { createButton, createTabBar } from "https://esm.sh/trueglass@1.0.0";
+  import { createButton, createTabBar } from "https://esm.sh/trueglass@1.0.2";
 </script>
 ```
 
