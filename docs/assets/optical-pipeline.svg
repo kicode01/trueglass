@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 340" width="1120" height="340" role="img" aria-labelledby="title desc">
+  <title id="title">TrueGlass Dual-Engine Optical Architecture</title>
+  <desc id="desc">Architectural pipeline diagram showing Backdrop Discovery, G2 Superellipse SDF and C2 sminCubic Union, Snell Bezel Solver, Dual Cross-Browser Engine (Chromium sRGB SVG and WebKit/Gecko WebGL2), Adaptive Luminance Sensor, and GPU Directional Specular Rim.</desc>
+  <defs>
+    <style>
+      .t-sans { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      .t-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    </style>
+
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07090e" />
+      <stop offset="100%" stop-color="#0b101b" />
+    </linearGradient>
+
+    <linearGradient id="node" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#141a29" />
+      <stop offset="100%" stop-color="#0d111c" />
+    </linearGradient>
+
+    <linearGradient id="node-cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e2238" />
+      <stop offset="100%" stop-color="#0d1626" />
+    </linearGradient>
+
+    <linearGradient id="node-emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d261e" />
+      <stop offset="100%" stop-color="#0c1718" />
+    </linearGradient>
+
+    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.8" fill="#ffffff" fill-opacity="0.06" />
+    </pattern>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#38bdf8" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#34d399" />
+    </marker>
+  </defs>
+
+  <rect width="1120" height="340" rx="20" fill="url(#bg)" />
+  <rect width="1120" height="340" rx="20" fill="url(#dots)" />
+  <rect x="0.5" y="0.5" width="1119" height="339" rx="19.5" fill="none" stroke="#ffffff" stroke-opacity="0.1" />
+
+  <!-- Header -->
+  <text x="32" y="38" class="t-sans" fill="#f8fafc" font-size="15.5" font-weight="650" letter-spacing="-0.02em">TrueGlass Dual-Engine Optical Pipeline</text>
+  <text x="1088" y="38" text-anchor="end" class="t-mono" fill="#94a3b8" font-size="11">Zero Dependencies · ES2022 TypeScript · 60–240 Hz</text>
+  <line x1="32" y1="54" x2="1088" y2="54" stroke="#ffffff" stroke-opacity="0.08" />
+
+  <!-- Stage 1: Backdrop Scene -->
+  <g transform="translate(32, 96)">
+    <rect width="176" height="176" rx="14" fill="url(#node)" stroke="#ffffff" stroke-opacity="0.14" />
+    <text x="16" y="28" class="t-mono" fill="#38bdf8" font-size="10" font-weight="600">01 · BACKDROP</text>
+    <text x="16" y="52" class="t-sans" fill="#f8fafc" font-size="13.5" font-weight="650">Scene Source</text>
+    <rect x="16" y="68" width="144" height="24" rx="6" fill="#0ea5e9" fill-opacity="0.12" stroke="#38bdf8" stroke-opacity="0.28" />
+    <text x="88" y="84" text-anchor="middle" class="t-mono" fill="#7dd3fc" font-size="10">[data-fluid-backdrop]</text>
+    <text x="16" y="114" class="t-sans" fill="#94a3b8" font-size="11">• Images, Canvas, Video</text>
+    <text x="16" y="132" class="t-sans" fill="#94a3b8" font-size="11">• Live DOM Typography</text>
+    <text x="16" y="150" class="t-sans" fill="#94a3b8" font-size="11">• Viewport Culling &amp;</text>
+    <text x="24" y="164" class="t-sans" fill="#94a3b8" font-size="11">Tab-Visibility Pause</text>
+  </g>
+
+  <!-- Connector 1 -> 2A (top) & 2B (bottom) -->
+  <path d="M 208 148 L 246 148" fill="none" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#arrow)" />
+  <path d="M 208 232 L 246 232" fill="none" stroke="#34d399" stroke-width="1.6" marker-end="url(#arrow-green)" />
+
+  <!-- Stage 2A: Geometry & Snell Solver -->
+  <g transform="translate(254, 76)">
+    <rect width="236" height="122" rx="14" fill="url(#node-cyan)" stroke="#38bdf8" stroke-opacity="0.32" />
+    <text x="16" y="26" class="t-mono" fill="#38bdf8" font-size="10" font-weight="600">02A · OPTICS &amp; SDF MATH</text>
+    <text x="16" y="48" class="t-sans" fill="#f8fafc" font-size="13.5" font-weight="650">G² Superellipse + Snell LUT</text>
+    <text x="16" y="70" class="t-mono" fill="#cbd5e1" font-size="10.5">superellipseSDF(n=4) · sminCubic</text>
+    <text x="16" y="90" class="t-sans" fill="#94a3b8" font-size="11">Bezel normal integration (IOR 1.50)</text>
+    <text x="16" y="106" class="t-sans" fill="#94a3b8" font-size="11">with fast flat-interior skip kernel</text>
+  </g>
+
+  <!-- Stage 2B: Adaptive Sensor -->
+  <g transform="translate(254, 212)">
+    <rect width="236" height="104" rx="14" fill="url(#node-emerald)" stroke="#34d399" stroke-opacity="0.32" />
+    <text x="16" y="25" class="t-mono" fill="#34d399" font-size="10" font-weight="600">02B · ADAPTIVE SENSOR</text>
+    <text x="16" y="46" class="t-sans" fill="#f8fafc" font-size="13" font-weight="650">Luminance &amp; Edge Variance</text>
+    <text x="16" y="67" class="t-mono" fill="#a7f3d0" font-size="10.5">Y · σ_Y · Ambient RGB Spill</text>
+    <text x="16" y="87" class="t-sans" fill="#94a3b8" font-size="11">Hysteresis light/dark flip + shadow</text>
+  </g>
+
+  <!-- Connector 2A -> 3 -->
+  <path d="M 490 137 L 530 137" fill="none" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#arrow)" />
+
+  <!-- Stage 3: Dual Cross-Browser Engine -->
+  <g transform="translate(538, 76)">
+    <rect width="262" height="156" rx="14" fill="url(#node)" stroke="#ffffff" stroke-opacity="0.16" />
+    <text x="16" y="26" class="t-mono" fill="#38bdf8" font-size="10" font-weight="600">03 · DUAL RENDER ENGINE</text>
+    <text x="16" y="48" class="t-sans" fill="#f8fafc" font-size="13.5" font-weight="650">Cross-Browser Refraction</text>
+
+    <!-- Sub-card A: SVG -->
+    <rect x="14" y="60" width="234" height="38" rx="8" fill="#ffffff" fill-opacity="0.04" stroke="#38bdf8" stroke-opacity="0.25" />
+    <text x="24" y="76" class="t-mono" fill="#7dd3fc" font-size="10.5" font-weight="600">Chromium · sRGB SVG Filter</text>
+    <text x="24" y="91" class="t-sans" fill="#94a3b8" font-size="10">Packed RG feDisplacementMap + Cauchy RGB</text>
+
+    <!-- Sub-card B: WebGL2 -->
+    <rect x="14" y="106" width="234" height="38" rx="8" fill="#ffffff" fill-opacity="0.04" stroke="#818cf8" stroke-opacity="0.3" />
+    <text x="24" y="122" class="t-mono" fill="#a5b4fc" font-size="10.5" font-weight="600">WebKit / Gecko · WebGL2 ES3</text>
+    <text x="24" y="137" class="t-sans" fill="#94a3b8" font-size="10">3-Pass BEND → SOFTEN → FINISH + Fusion</text>
+  </g>
+
+  <!-- Connectors -> Stage 4 -->
+  <path d="M 800 154 L 840 154" fill="none" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#arrow)" />
+  <path d="M 490 264 L 820 264 L 820 220 L 840 220" fill="none" stroke="#34d399" stroke-width="1.6" marker-end="url(#arrow-green)" />
+
+  <!-- Stage 4: GPU Rim, Springs & UI -->
+  <g transform="translate(848, 76)">
+    <rect width="240" height="240" rx="14" fill="url(#node-cyan)" stroke="#38bdf8" stroke-opacity="0.4" />
+    <text x="16" y="26" class="t-mono" fill="#38bdf8" font-size="10" font-weight="600">04 · FINISHING &amp; UI</text>
+    <text x="16" y="48" class="t-sans" fill="#f8fafc" font-size="13.5" font-weight="650">TrueGlass Primitives</text>
+
+    <rect x="14" y="62" width="212" height="44" rx="8" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.1" />
+    <text x="24" y="79" class="t-sans" fill="#f8fafc" font-size="11.5" font-weight="600">GPU Specular Fresnel Rim</text>
+    <text x="24" y="96" class="t-mono" fill="#7dd3fc" font-size="9.8">--lg-light-angle · Tilt / Pointer</text>
+
+    <rect x="14" y="114" width="212" height="44" rx="8" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.1" />
+    <text x="24" y="131" class="t-sans" fill="#f8fafc" font-size="11.5" font-weight="600">Analytical Harmonic Springs</text>
+    <text x="24" y="148" class="t-mono" fill="#cbd5e1" font-size="9.8">Rubber-Band Press · Lift · Morph</text>
+
+    <rect x="14" y="166" width="212" height="58" rx="8" fill="#38bdf8" fill-opacity="0.1" stroke="#38bdf8" stroke-opacity="0.3" />
+    <text x="24" y="184" class="t-sans" fill="#e0f2fe" font-size="11.5" font-weight="600">10 Interactive Components</text>
+    <text x="24" y="200" class="t-sans" fill="#94a3b8" font-size="10">TabBar · Switch · Slider · Button</text>
+    <text x="24" y="214" class="t-sans" fill="#94a3b8" font-size="10">Menu · Container · Search · A11y</text>
+  </g>
+</svg>
